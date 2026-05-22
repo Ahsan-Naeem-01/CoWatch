@@ -1,0 +1,30 @@
+# Fly.io config for the CoWatch sync server.
+# `fly launch` will prompt you to override `app` and `primary_region`.
+# Keep `min_machines_running = 1` so the WebSocket stays alive on free tier.
+
+app = "cowatch-backend"
+primary_region = "iad"
+
+[build]
+
+[env]
+  PORT = "3000"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_start_machines = true
+  auto_stop_machines = "off"
+  min_machines_running = 1
+  processes = ["app"]
+
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 200
+    hard_limit = 250
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+  cpu_kind = "shared"
+  cpus = 1
