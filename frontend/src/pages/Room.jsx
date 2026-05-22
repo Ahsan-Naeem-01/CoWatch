@@ -118,6 +118,20 @@ export default function Room() {
     const onError = (msg) =>
       pushToast({ kind: 'error', title: 'Sync error', body: String(msg || 'Unknown error') });
 
+    // Keep room.playback in sync with remote events as well. useVideoSync also
+    // listens for these, but its handler short-circuits when the video element
+    // doesn't yet exist (still hashing / metadata not loaded). Mirroring the
+    // state here means the *next* `applySnapshot` call (e.g. on loadedmetadata)
+    // sees the up-to-date playback instead of the stale snapshot from join.
+    const patchPlayback = (patch) =>
+      setRoom((r) => (r ? { ...r, playback: { ...r.playback, ...patch } } : r));
+    const onRemotePlayState = ({ currentTime }) =>
+      patchPlayback({ isPlaying: true, currentTime });
+    const onRemotePauseState = ({ currentTime }) =>
+      patchPlayback({ isPlaying: false, currentTime });
+    const onRemoteSeekState = ({ currentTime }) => patchPlayback({ currentTime });
+    const onRemoteRateState = ({ playbackRate }) => patchPlayback({ playbackRate });
+
     socket.on('room-state', onRoomState);
     socket.on('chat-message', onChat);
     socket.on('user-connected', onConnected);
@@ -128,6 +142,10 @@ export default function Room() {
     socket.on('file-hash-mismatch', onMismatch);
     socket.on('file-hash-update', onHashUpdate);
     socket.on('error-message', onError);
+    socket.on('remote-play', onRemotePlayState);
+    socket.on('remote-pause', onRemotePauseState);
+    socket.on('remote-seek', onRemoteSeekState);
+    socket.on('remote-rate', onRemoteRateState);
 
     return () => {
       socket.off('room-state', onRoomState);
@@ -140,6 +158,10 @@ export default function Room() {
       socket.off('file-hash-mismatch', onMismatch);
       socket.off('file-hash-update', onHashUpdate);
       socket.off('error-message', onError);
+      socket.off('remote-play', onRemotePlayState);
+      socket.off('remote-pause', onRemotePauseState);
+      socket.off('remote-seek', onRemoteSeekState);
+      socket.off('remote-rate', onRemoteRateState);
     };
   }, [socket, pushToast]);
 
@@ -171,18 +193,37 @@ export default function Room() {
   );
 
   // ---------- Late-join: apply playback snapshot after the video can play ----------
+  // Stable callback so `applySnapshot` (and the inner socket handlers in
+  // useVideoSync) don't get re-created on every render, which would otherwise
+  // re-trigger the "snapshot follow-up" effect below in a loop.
+  const handleAutoplayBlocked = useCallback(() => setAutoplayBlocked(true), []);
   const videoSync = useVideoSync({
     socket,
     videoRef,
     canControl,
     fileReady: !!fileObjectUrl,
-    onAutoplayBlocked: () => setAutoplayBlocked(true),
+    isHost,
+    onAutoplayBlocked: handleAutoplayBlocked,
   });
 
+  const { applySnapshot } = videoSync;
+  const metadataReadyRef = useRef(false);
   const onMetadataLoaded = useCallback(() => {
+    metadataReadyRef.current = true;
     if (!room) return;
-    videoSync.applySnapshot(room.playback);
-  }, [room, videoSync]);
+    applySnapshot(room.playback);
+  }, [room, applySnapshot]);
+
+  // If a remote play/pause arrived *before* the video element was ready, the
+  // sync hook's handler short-circuited and the video stayed paused. Once
+  // metadata has loaded and `room.playback.isPlaying` flips, re-apply the
+  // snapshot so the video catches up. Keyed on the boolean state transition
+  // (and on rate) so reconnects and host-driven changes both converge here.
+  useEffect(() => {
+    if (!metadataReadyRef.current) return;
+    if (!room?.playback) return;
+    applySnapshot(room.playback);
+  }, [room?.playback?.isPlaying, room?.playback?.playbackRate, applySnapshot]);
 
   const sendChat = useCallback(
     (text) => {

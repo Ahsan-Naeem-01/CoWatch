@@ -21,11 +21,13 @@ export function useVideoSync({
   videoRef,
   canControl,
   fileReady,
+  isHost,
   onAutoplayBlocked,
 }) {
   const remoteEventInFlight = useRef(false);
   const lastSeekSentAt = useRef(0);
   const correctionTimer = useRef(null);
+  const autoplayPrimed = useRef(false);
   const [driftMs, setDriftMs] = useState(0);
   const [syncing, setSyncing] = useState(false);
 
@@ -45,16 +47,28 @@ export function useVideoSync({
   }, [videoRef]);
 
   /**
-   * Programmatic <video>.play() is rejected by browsers when the element has
-   * never seen a user gesture. We retry muted (almost always allowed) so the
-   * remote peer can at least see the picture moving; if even that fails we
-   * surface the block to the UI so a "Tap to begin" overlay can be shown.
+   * Browsers reject `video.play()` when the element has never seen a user
+   * gesture — so a peer who is just sitting in the room can't be started by
+   * a remote-play event. Muted autoplay, however, is universally allowed.
+   *
+   * Strategy: on the *first* programmatic play for a non-host viewer, force
+   * `muted = true` so playback starts immediately. After that we stop forcing
+   * the flag, so once the viewer clicks the volume control to re-enable
+   * sound, subsequent remote events respect their choice. Hosts never go
+   * through this path for their own actions (those originate from a real
+   * click) — only when they receive remote events under "allow all to
+   * control", which we skip muting for so they don't lose sound.
    */
   const safePlay = useCallback(
     (video) => {
+      if (!isHost && !autoplayPrimed.current) {
+        video.muted = true;
+        autoplayPrimed.current = true;
+      }
       const first = video.play();
       if (!first || typeof first.then !== 'function') return;
       first.catch(() => {
+        // Last-resort defense if even muted playback was rejected.
         video.muted = true;
         const second = video.play();
         if (!second || typeof second.then !== 'function') return;
@@ -63,7 +77,7 @@ export function useVideoSync({
         });
       });
     },
-    [onAutoplayBlocked]
+    [isHost, onAutoplayBlocked]
   );
 
   // ---------- Outbound: emit local actions ----------
@@ -101,6 +115,15 @@ export function useVideoSync({
   }, [socket, videoRef, canControl]);
 
   // Wire native video events.
+  //
+  // IMPORTANT: `fileReady` is in the dep list. Refs don't trigger re-renders,
+  // so without an observable signal that flips when the <video> element gets
+  // mounted (it only renders after the user picks a file), this effect would
+  // run once at hook init with `videoRef.current === null`, return early, and
+  // never run again — leaving the native play/pause/seek/ratechange events
+  // permanently unwired. `fileReady` becomes true the moment we have an
+  // object URL (which is also when VideoPlayer mounts and populates the ref),
+  // so the effect re-runs at exactly the right time.
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -114,7 +137,7 @@ export function useVideoSync({
       video.removeEventListener('seeked', handleSeeked);
       video.removeEventListener('ratechange', handleRateChange);
     };
-  }, [videoRef, handlePlay, handlePause, handleSeeked, handleRateChange]);
+  }, [videoRef, fileReady, handlePlay, handlePause, handleSeeked, handleRateChange]);
 
   // ---------- Inbound: remote events ----------
 

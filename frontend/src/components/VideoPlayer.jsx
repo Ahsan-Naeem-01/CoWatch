@@ -151,6 +151,25 @@ export default function VideoPlayer({
         </button>
       )}
 
+      {/* "Sound off" hint — appears while the video is muted (e.g. after the
+          auto-mute fallback engaged) so the viewer knows audio is recoverable
+          with a single click. Hidden once the user un-mutes. */}
+      {muted && !autoplayBlocked && playing && (
+        <button
+          onClick={() => {
+            const v = videoRef.current;
+            if (!v) return;
+            v.muted = false;
+          }}
+          className="absolute top-3 left-3 panel px-3 py-2 flex items-center gap-2 hover:bg-ember-500 hover:text-ink-900 transition-colors"
+        >
+          <MutedIcon />
+          <span className="font-mono text-[10px] uppercase tracking-cinema">
+            Sound off · tap for audio
+          </span>
+        </button>
+      )}
+
       {/* control bar */}
       <div className="absolute left-0 right-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent pt-12 px-4 pb-3 opacity-90 group-hover:opacity-100 transition-opacity">
         {/* Scrubber */}
