@@ -1,0 +1,21 @@
+# Render.com blueprint for the CoWatch sync server.
+# After signing up at https://render.com, click "New +" -> "Blueprint" and
+# point it at this repo. Render reads this file from the repo root.
+
+services:
+  - type: web
+    name: cowatch-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: CLIENT_ORIGIN
+        # Filled in manually via the Render dashboard once the Vercel URL exists.
+        sync: false

@@ -30,11 +30,26 @@ export default function VideoPlayer({
   const [rateOpen, setRateOpen] = useState(false);
   const [showSubsInput, setShowSubsInput] = useState(false);
   const [subtitleTrack, setSubtitleTrack] = useState(null);
-  const [hovering, setHovering] = useState(false);
+  const [mouseActive, setMouseActive] = useState(false);
+  const [controlsHover, setControlsHover] = useState(false);
   const [scrubHover, setScrubHover] = useState(null);
   const containerRef = useRef(null);
   const scrubRef = useRef(null);
   const clickTimerRef = useRef(null);
+  const idleTimerRef = useRef(null);
+
+  const showControls = !playing || controlsHover || mouseActive;
+
+  const bumpActivity = () => {
+    setMouseActive(true);
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => setMouseActive(false), 2000);
+  };
+
+  const onSurfaceLeave = () => {
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    setMouseActive(false);
+  };
 
   useEffect(() => {
     const v = videoRef.current;
@@ -127,6 +142,7 @@ export default function VideoPlayer({
 
   useEffect(() => () => {
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
   }, []);
 
   const handleSubtitleFile = (file) => {
@@ -157,10 +173,12 @@ export default function VideoPlayer({
   return (
     <div
       ref={containerRef}
-      className="relative w-full h-full bg-black group"
+      className={`relative w-full h-full bg-black group ${
+        playing && !showControls ? 'cursor-none' : ''
+      }`}
       style={{ isolation: 'isolate' }}
-      onMouseEnter={() => setHovering(true)}
-      onMouseLeave={() => setHovering(false)}
+      onMouseMove={bumpActivity}
+      onMouseLeave={onSurfaceLeave}
     >
       <video
         ref={videoRef}
@@ -227,8 +245,10 @@ export default function VideoPlayer({
 
       {/* control bar */}
       <div
+        onMouseEnter={() => setControlsHover(true)}
+        onMouseLeave={() => setControlsHover(false)}
         className={`absolute left-0 right-0 bottom-0 px-4 pt-12 pb-3 z-10 transition-opacity duration-200 ${
-          hovering || !playing ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         style={{
           background:
