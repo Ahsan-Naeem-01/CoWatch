@@ -260,7 +260,7 @@ export default function Room() {
   ];
 
   return (
-    <div className="h-screen flex flex-col fade-in min-h-0 overflow-hidden">
+    <div className="min-h-screen lg:h-screen flex flex-col fade-in lg:min-h-0 lg:overflow-hidden">
       <RoomHeader
         room={room}
         isHost={isHost}
@@ -274,9 +274,9 @@ export default function Room() {
           Rendering a single VideoPlayer (not duplicated per breakpoint) keeps
           the same <video> element and ref alive across resizes, so playback
           state is preserved and only one ref claim happens. */}
-      <section className="flex-1 px-4 lg:px-5 pb-5 pt-4 min-h-0 flex flex-col gap-4 lg:grid lg:grid-cols-[280px_1fr_360px] lg:grid-rows-1">
+      <section className="px-4 lg:px-5 pb-5 pt-4 flex flex-col gap-4 lg:flex-1 lg:min-h-0 lg:grid lg:grid-cols-[280px_1fr_360px] lg:grid-rows-1">
         {/* Activity rail — desktop sidebar only */}
-        <div className="hidden lg:flex min-h-0">
+        <div className="hidden lg:block min-h-0">
           <ActivityLog room={room} />
         </div>
 
@@ -333,7 +333,7 @@ export default function Room() {
           </div>
 
           {/* Mobile tab content */}
-          <div className="lg:hidden card flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="lg:hidden card min-h-[480px] flex flex-col overflow-hidden">
             {activeTab === 'chat' && (
               <ChatPanel
                 messages={chatMessages}
@@ -351,7 +351,7 @@ export default function Room() {
         </div>
 
         {/* Chat — desktop sidebar only */}
-        <div className="hidden lg:flex min-h-0">
+        <div className="hidden lg:block min-h-0">
           <ChatPanel
             messages={chatMessages}
             onSend={sendChat}
