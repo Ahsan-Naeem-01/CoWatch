@@ -97,7 +97,7 @@ async function waitForVideoReady(page, label) {
     await waitForVideoReady(host, 'host');
     await waitForVideoReady(peer, 'peer');
 
-    // Give the file-hash exchange + initial snapshot a moment to settle.
+    // Give the initial snapshot a moment to settle.
     await sleep(800);
 
 

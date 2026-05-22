@@ -28,7 +28,3 @@ export function sanitizePassword(raw) {
 export function sanitizeChatMessage(raw) {
   return stripControl(raw || '').trim().slice(0, 500);
 }
-
-export function sanitizeFileName(raw) {
-  return stripControl(raw || '').trim().slice(0, 200);
-}

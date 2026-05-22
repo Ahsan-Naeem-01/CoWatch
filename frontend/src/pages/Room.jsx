@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket.js';
 import { useApp } from '../context/AppContext.jsx';
-import { useFileHash } from '../hooks/useFileHash.js';
 import { useVideoSync } from '../hooks/useVideoSync.js';
 import VideoPlayer from '../components/VideoPlayer.jsx';
 import FileSelector from '../components/FileSelector.jsx';
@@ -11,7 +10,6 @@ import ChatPanel from '../components/ChatPanel.jsx';
 import ActivityLog from '../components/ActivityLog.jsx';
 import SyncIndicator from '../components/SyncIndicator.jsx';
 import RoomHeader from '../components/RoomHeader.jsx';
-import HashBadge from '../components/HashBadge.jsx';
 
 export default function Room() {
   const { name: encodedName } = useParams();
@@ -27,11 +25,9 @@ export default function Room() {
   const [activeTab, setActiveTab] = useState('viewers'); // 'viewers' | 'chat' | 'activity'
   const [file, setFile] = useState(null);
   const [fileObjectUrl, setFileObjectUrl] = useState(null);
-  const [fileMismatch, setFileMismatch] = useState(null);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
 
   const videoRef = useRef(null);
-  const fileHash = useFileHash();
   const passwordRef = useRef(location.state?.password || '');
 
   const isHost = !!(room && selfId && room.hostId === selfId);
@@ -68,13 +64,9 @@ export default function Room() {
         }
         setRoom(resp.room);
         setSelfId(resp.selfId);
-        // Reapply the file hash so the server can verify the rejoined client.
-        if (fileHash.signature) {
-          socket.emit('file-hash', { signature: fileHash.signature });
-        }
       }
     );
-  }, [connected, socket, selfId, roomNameParam, userName, pushToast, navigate, fileHash.signature]);
+  }, [connected, socket, selfId, roomNameParam, userName, pushToast, navigate]);
 
   // ---------- Socket subscriptions ----------
   useEffect(() => {
@@ -103,26 +95,11 @@ export default function Room() {
       });
     const onActivity = (activity) =>
       setRoom((r) => (r ? { ...r, activity } : r));
-    const onMismatch = ({ expected, actual }) => {
-      setFileMismatch({ expected, actual });
-      pushToast({
-        kind: 'warn',
-        title: 'File mismatch detected',
-        body: 'Your file does not match the room. Playback is desynchronized.',
-        ttl: 8000,
-      });
-    };
-    const onHashUpdate = ({ roomSignature }) => {
-      setRoom((r) => (r ? { ...r, fileSignature: roomSignature } : r));
-    };
     const onError = (msg) =>
       pushToast({ kind: 'error', title: 'Sync error', body: String(msg || 'Unknown error') });
 
-    // Keep room.playback in sync with remote events as well. useVideoSync also
-    // listens for these, but its handler short-circuits when the video element
-    // doesn't yet exist (still hashing / metadata not loaded). Mirroring the
-    // state here means the *next* `applySnapshot` call (e.g. on loadedmetadata)
-    // sees the up-to-date playback instead of the stale snapshot from join.
+    // Mirror remote playback events into room.playback so the snapshot
+    // re-applied on metadata-load / state-change effect sees fresh data.
     const patchPlayback = (patch) =>
       setRoom((r) => (r ? { ...r, playback: { ...r.playback, ...patch } } : r));
     const onRemotePlayState = ({ currentTime }) =>
@@ -139,8 +116,6 @@ export default function Room() {
     socket.on('host-change', onHostChange);
     socket.on('control-toggled', onControlToggled);
     socket.on('activity', onActivity);
-    socket.on('file-hash-mismatch', onMismatch);
-    socket.on('file-hash-update', onHashUpdate);
     socket.on('error-message', onError);
     socket.on('remote-play', onRemotePlayState);
     socket.on('remote-pause', onRemotePauseState);
@@ -155,8 +130,6 @@ export default function Room() {
       socket.off('host-change', onHostChange);
       socket.off('control-toggled', onControlToggled);
       socket.off('activity', onActivity);
-      socket.off('file-hash-mismatch', onMismatch);
-      socket.off('file-hash-update', onHashUpdate);
       socket.off('error-message', onError);
       socket.off('remote-play', onRemotePlayState);
       socket.off('remote-pause', onRemotePauseState);
@@ -177,19 +150,14 @@ export default function Room() {
 
   // ---------- File handling ----------
   const handleFileChosen = useCallback(
-    async (chosen) => {
+    (chosen) => {
       if (!chosen) return;
       if (fileObjectUrl) URL.revokeObjectURL(fileObjectUrl);
       const url = URL.createObjectURL(chosen);
       setFile(chosen);
       setFileObjectUrl(url);
-      setFileMismatch(null);
-      const sig = await fileHash.compute(chosen);
-      if (sig) {
-        socket.emit('file-hash', { signature: sig });
-      }
     },
-    [fileObjectUrl, fileHash, socket]
+    [fileObjectUrl]
   );
 
   // ---------- Late-join: apply playback snapshot after the video can play ----------
@@ -274,12 +242,6 @@ export default function Room() {
     [socket, setUserName]
   );
 
-  const hashMatchesRoom = useMemo(() => {
-    if (!room?.fileSignature) return null;
-    if (!fileHash.signature) return null;
-    return room.fileSignature.hash === fileHash.signature.hash;
-  }, [room, fileHash.signature]);
-
   if (!room) return null;
 
   return (
@@ -298,12 +260,7 @@ export default function Room() {
         <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-4">
           <div className="relative panel overflow-hidden">
             {!fileObjectUrl ? (
-              <FileSelector
-                onPick={handleFileChosen}
-                hashing={fileHash.hashing}
-                progress={fileHash.progress}
-                roomSignature={room.fileSignature}
-              />
+              <FileSelector onPick={handleFileChosen} />
             ) : (
               <VideoPlayer
                 videoRef={videoRef}
@@ -322,19 +279,12 @@ export default function Room() {
 
           <div className="flex flex-wrap items-center gap-3">
             <SyncIndicator connected={connected} />
-            <HashBadge
-              roomSignature={room.fileSignature}
-              userSignature={fileHash.signature}
-              matches={hashMatchesRoom}
-              mismatch={fileMismatch}
-            />
             {file && (
               <button
                 onClick={() => {
                   if (fileObjectUrl) URL.revokeObjectURL(fileObjectUrl);
                   setFile(null);
                   setFileObjectUrl(null);
-                  fileHash.reset();
                 }}
                 className="btn-ghost"
               >

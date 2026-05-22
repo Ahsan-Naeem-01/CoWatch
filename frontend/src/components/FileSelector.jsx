@@ -1,11 +1,8 @@
 import { useRef, useState } from 'react';
-import { formatBytes, shortHash } from '../utils/formatTime.js';
 
-export default function FileSelector({ onPick, hashing, progress, roomSignature }) {
+export default function FileSelector({ onPick }) {
   const inputRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
-
-  const pct = Math.min(100, Math.max(0, Math.round((progress || 0) * 100)));
 
   return (
     <div
@@ -46,38 +43,17 @@ export default function FileSelector({ onPick, hashing, progress, roomSignature 
           Load your local reel
         </div>
         <div className="font-display text-3xl text-bone-50 italic">
-          {hashing ? 'Reading the print…' : 'Pick a video file from your drive'}
+          Pick a video file from your drive
         </div>
         <p className="mt-3 text-sm text-bone-200/70">
-          Nothing leaves your machine. We only share the SHA-256 fingerprint so
-          everyone can be sure they&apos;re watching the same cut.
+          Nothing leaves your machine — the file is loaded directly into your
+          browser. Pick the same video as everyone else in the room.
         </p>
 
-        {!hashing ? (
-          <button onClick={() => inputRef.current?.click()} className="btn-primary mt-7">
-            Choose a file
-            <span aria-hidden>→</span>
-          </button>
-        ) : (
-          <div className="mt-8">
-            <div className="h-[3px] w-full bg-ink-700 overflow-hidden">
-              <div
-                className="h-full bg-ember-500 transition-[width] duration-150 ease-out"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <div className="mt-2 font-mono text-[10px] tracking-cinema uppercase text-bone-300/70">
-              Hashing · {pct}%
-            </div>
-          </div>
-        )}
-
-        {roomSignature && (
-          <div className="mt-6 font-mono text-[10px] tracking-cinema uppercase text-bone-300/60">
-            Room is expecting: <span className="text-ember-400">{shortHash(roomSignature.hash)}</span>
-            <span className="text-bone-300/40"> · {formatBytes(roomSignature.size)}</span>
-          </div>
-        )}
+        <button onClick={() => inputRef.current?.click()} className="btn-primary mt-7">
+          Choose a file
+          <span aria-hidden>→</span>
+        </button>
 
         {dragOver && (
           <div className="mt-6 font-mono text-[10px] tracking-cinema uppercase text-ember-400">

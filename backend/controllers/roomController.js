@@ -79,7 +79,6 @@ export function projectRoom(room) {
       name: u.name,
       joinedAt: u.joinedAt,
     })),
-    fileSignature: room.fileSignature,
     playback: projectPlayback(room.playback),
     activity: room.activity.slice(-50),
   };

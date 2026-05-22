@@ -6,7 +6,6 @@
  *   {
  *     name, password, hostId, allowAllControl, createdAt,
  *     users: Map<socketId, { id, name, joinedAt }>,
- *     fileSignature: { hash, size, name } | null,
  *     playback: { isPlaying, currentTime, playbackRate, updatedAt },
  *     activity: Array<{ at, kind, message }>
  *   }
@@ -48,7 +47,6 @@ export const roomStore = {
       allowAllControl: false,
       createdAt: Date.now(),
       users: new Map(),
-      fileSignature: null,
       playback: { isPlaying: false, currentTime: 0, playbackRate: 1, updatedAt: Date.now() },
       activity: [],
     };
@@ -92,14 +90,6 @@ export const roomStore = {
     const room = rooms.get(normalizeName(name));
     if (!room) return null;
     room.playback = { ...room.playback, ...patch, updatedAt: Date.now() };
-    return room;
-  },
-
-  setFileSignature: (name, signature) => {
-    const room = rooms.get(normalizeName(name));
-    if (!room) return null;
-    // First valid signature locks the room — subsequent users must match.
-    if (!room.fileSignature) room.fileSignature = signature;
     return room;
   },
 

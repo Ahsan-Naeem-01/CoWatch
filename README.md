@@ -5,8 +5,7 @@
 CoWatch is a full-stack synchronized local-video player. Each viewer loads
 their own copy of a film from their own disk. The Node/Socket.IO backend only
 acts as a sync relay for play / pause / seek / playbackRate events — nothing
-leaves your machine except a SHA-256 fingerprint used to confirm everyone is
-on the same cut.
+about the file leaves your machine.
 
 Sync model is **event-driven**: peers stay aligned because every play, pause,
 seek, and rate-change is broadcast to the room. The server also projects the
@@ -68,7 +67,8 @@ The frontend reads `VITE_SERVER_URL` (defaults to `http://localhost:3000`).
    host. Share the password with friends out-of-band.
 2. **Join an existing room** — same lobby form, "Join" tab.
 3. **Load your reel** — every viewer chooses the same video file from their
-   own drive. The SHA-256 is computed in your browser and compared.
+   own drive. Pick the same file as the rest of the room — there's no
+   server-side fingerprinting, so file matching is on the honor system.
 4. **Watch** — the host's play/pause/seek/rate decisions broadcast to
    everyone instantly.
 5. **Host privileges** — only the host can control playback by default. The
@@ -98,11 +98,11 @@ them restore sound with one click.
     ├── tailwind.config.js    # Cinema-noir theme tokens
     ├── src/
     │   ├── components/       # VideoPlayer, ChatPanel, UsersList, ...
-    │   ├── hooks/            # useSocket, useVideoSync, useFileHash
+    │   ├── hooks/            # useSocket, useVideoSync
     │   ├── pages/            # Home (lobby), Room
     │   ├── context/          # AppContext (toasts, identity)
     │   ├── services/         # Socket singleton
-    │   └── utils/            # hashFile, formatTime
+    │   └── utils/            # formatTime
     └── package.json
 ```
 
@@ -117,7 +117,6 @@ them restore sound with one click.
 - [x] Play / pause / seek / playback-rate sync (event-driven, no drift loop)
 - [x] Late-join projection — server projects playhead forward at read time
 - [x] Muted-autoplay fallback for non-host first play
-- [x] SHA-256 file fingerprint with mismatch warning
 - [x] Host promotion (longest-tenured user when host leaves)
 - [x] "Allow all to control" host toggle
 - [x] Anti-loop flag — remote events never re-emit
@@ -147,7 +146,6 @@ them restore sound with one click.
 | `seek`          | `{ currentTime }`                                 |
 | `playback-rate` | `{ playbackRate }`                                |
 | `sync-state`    | `{}` (with ack — returns projected room state)    |
-| `file-hash`     | `{ signature: { hash, size, name } }`             |
 | `toggle-control`| `{ allowAll: boolean }`                           |
 | `chat-message`  | `{ text }`                                        |
 | `rename`        | `{ userName }`                                    |
@@ -155,9 +153,8 @@ them restore sound with one click.
 ### Server → Client
 
 `room-state`, `remote-play`, `remote-pause`, `remote-seek`, `remote-rate`,
-`file-hash-update`, `file-hash-mismatch`, `user-connected`,
-`user-disconnected`, `host-change`, `control-toggled`, `chat-message`,
-`activity`, `error-message`.
+`user-connected`, `user-disconnected`, `host-change`, `control-toggled`,
+`chat-message`, `activity`, `error-message`.
 
 ---
 

@@ -21,12 +21,3 @@ export function validPlaybackRate(value) {
 export function validBoolean(value) {
   return value === true || value === false ? value : null;
 }
-
-export function validFileSignature(sig) {
-  if (!sig || typeof sig !== 'object') return null;
-  const { hash, size, name } = sig;
-  if (typeof hash !== 'string' || !/^[a-f0-9]{64}$/i.test(hash)) return null;
-  if (!Number.isFinite(Number(size)) || Number(size) <= 0) return null;
-  if (typeof name !== 'string') return null;
-  return { hash: hash.toLowerCase(), size: Number(size), name: name.slice(0, 200) };
-}

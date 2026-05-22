@@ -4,13 +4,12 @@
  *   Inbound (client -> server):
  *     create-room, join-room, leave-room
  *     play, pause, seek, playback-rate, sync-state
- *     file-hash, chat-message, toggle-control, rename
+ *     chat-message, toggle-control, rename
  *
  *   Outbound (server -> client / room):
  *     room-state
  *     remote-play, remote-pause, remote-seek, remote-rate
  *     user-connected, user-disconnected, host-change, control-toggled
- *     file-hash-update, file-hash-mismatch
  *     chat-message, activity, error-message
  *
  * Sync model: event-driven. Peers stay aligned via play/pause/seek/rate
@@ -23,12 +22,7 @@ import { RoomController, projectRoom } from '../controllers/roomController.js';
 import { roomStore } from '../rooms/roomStore.js';
 import { attachRateLimiter } from '../middleware/rateLimit.js';
 import { sanitizeChatMessage, sanitizeUserName } from '../utils/sanitize.js';
-import {
-  validTimestamp,
-  validPlaybackRate,
-  validBoolean,
-  validFileSignature,
-} from '../utils/validators.js';
+import { validTimestamp, validPlaybackRate, validBoolean } from '../utils/validators.js';
 
 export function registerSocketHandlers(io) {
   io.on('connection', (socket) => {
@@ -184,40 +178,6 @@ export function registerSocketHandlers(io) {
         const room = roomStore.get(socket.data.roomName);
         if (!room) return ack?.({ error: 'not-in-room' });
         ack?.({ ok: true, room: projectRoom(room) });
-      })
-    );
-
-    // ---------- File hash verification ----------
-
-    socket.on(
-      'file-hash',
-      guard(({ signature } = {}) => {
-        const sig = validFileSignature(signature);
-        if (!sig) return;
-        const room = roomStore.get(socket.data.roomName);
-        if (!room) return;
-
-        const user = room.users.get(socket.id);
-        if (user) user.fileSignature = sig;
-
-        // Lock the room's signature to whatever the host first reports.
-        if (room.hostId === socket.id || !room.fileSignature) {
-          roomStore.setFileSignature(room.name, sig);
-        }
-
-        const matches = room.fileSignature && room.fileSignature.hash === sig.hash;
-        if (!matches && room.fileSignature) {
-          socket.emit('file-hash-mismatch', {
-            expected: room.fileSignature,
-            actual: sig,
-          });
-        }
-        io.to(room.key).emit('file-hash-update', {
-          roomSignature: room.fileSignature,
-          userId: socket.id,
-          userSignature: sig,
-          match: !!matches,
-        });
       })
     );
 

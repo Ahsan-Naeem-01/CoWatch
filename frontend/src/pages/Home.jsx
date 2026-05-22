@@ -264,7 +264,7 @@ function FilmStripFooter() {
     <footer className="mt-10 flex items-center gap-4 font-mono text-[10px] tracking-cinema uppercase text-bone-300/50">
       <span className="tick">No video ever touches our server</span>
       <span className="text-bone-300/30">·</span>
-      <span>SHA-256 verified locally</span>
+      <span>Event-driven playback sync</span>
       <span className="text-bone-300/30">·</span>
       <span>WebSocket relay only</span>
     </footer>
