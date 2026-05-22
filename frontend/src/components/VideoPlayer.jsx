@@ -195,7 +195,7 @@ export default function VideoPlayer({
           type="button"
           onClick={onSurfaceClick}
           aria-label={playing ? 'Pause' : 'Play'}
-          className="absolute inset-0 z-0 bg-transparent cursor-pointer"
+          className="absolute inset-0 z-0 bg-transparent cursor-default"
         />
       )}
 
