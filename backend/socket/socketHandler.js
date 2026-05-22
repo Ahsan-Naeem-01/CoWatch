@@ -4,14 +4,19 @@
  *   Inbound (client -> server):
  *     create-room, join-room, leave-room
  *     play, pause, seek, playback-rate, sync-state
- *     heartbeat, file-hash, chat-message, toggle-control
+ *     file-hash, chat-message, toggle-control, rename
  *
  *   Outbound (server -> client / room):
- *     room-joined, room-error, room-state
- *     remote-play, remote-pause, remote-seek, remote-rate, remote-sync
+ *     room-state
+ *     remote-play, remote-pause, remote-seek, remote-rate
  *     user-connected, user-disconnected, host-change, control-toggled
  *     file-hash-update, file-hash-mismatch
- *     chat-message, activity, drift-report, error-message
+ *     chat-message, activity, error-message
+ *
+ * Sync model: event-driven. Peers stay aligned via play/pause/seek/rate
+ * broadcasts. There is no periodic heartbeat or drift correction — late
+ * joiners get the right position because `projectRoom` projects the playhead
+ * forward in time at read time (see controllers/roomController.js).
  */
 
 import { RoomController, projectRoom } from '../controllers/roomController.js';
@@ -24,8 +29,6 @@ import {
   validBoolean,
   validFileSignature,
 } from '../utils/validators.js';
-
-const DRIFT_THRESHOLD_MS = Number(process.env.DRIFT_THRESHOLD_MS) || 500;
 
 export function registerSocketHandlers(io) {
   io.on('connection', (socket) => {
@@ -181,34 +184,6 @@ export function registerSocketHandlers(io) {
         const room = roomStore.get(socket.data.roomName);
         if (!room) return ack?.({ error: 'not-in-room' });
         ack?.({ ok: true, room: projectRoom(room) });
-      })
-    );
-
-    // ---------- Drift / heartbeat ----------
-
-    socket.on(
-      'heartbeat',
-      guard(({ currentTime } = {}) => {
-        const t = validTimestamp(currentTime);
-        if (t === null) return;
-        const room = roomStore.recordHeartbeat(socket.data.roomName, socket.id, t);
-        if (!room) return;
-
-        // Compute drift against the host's last known timestamp. If the host
-        // hasn't sent a heartbeat yet (or the user IS the host), fall back to
-        // the stored playback timestamp.
-        const host = room.users.get(room.hostId);
-        const reference =
-          host && socket.id !== host.id ? host.currentTime : room.playback.currentTime;
-        const driftMs = Math.round((t - reference) * 1000);
-
-        if (Math.abs(driftMs) > DRIFT_THRESHOLD_MS && socket.id !== room.hostId) {
-          socket.emit('drift-report', {
-            driftMs,
-            referenceTime: reference,
-            shouldCorrect: true,
-          });
-        }
       })
     );
 

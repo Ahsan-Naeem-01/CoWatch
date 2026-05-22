@@ -29,8 +29,6 @@ export const RoomController = {
       id: userId,
       name: cleanUser,
       joinedAt: Date.now(),
-      lastHeartbeat: Date.now(),
-      currentTime: 0,
     };
     roomStore.addUser(cleanName, user);
     return { room, user };
@@ -49,8 +47,6 @@ export const RoomController = {
       id: userId,
       name: cleanUser,
       joinedAt: Date.now(),
-      lastHeartbeat: Date.now(),
-      currentTime: 0,
     };
     roomStore.addUser(cleanName, user);
     return { room, user };
@@ -62,7 +58,15 @@ export const RoomController = {
   },
 };
 
-/** Public, password-stripped projection of a room — safe to send to clients. */
+/**
+ * Public, password-stripped projection of a room — safe to send to clients.
+ *
+ * `playback.currentTime` is *projected forward* at read time using the wall
+ * clock. The stored `currentTime` is the value at the moment of the last
+ * play/pause/seek event; if the room is currently playing, we add the elapsed
+ * time (scaled by playbackRate) so a late-joining peer sees "where playback
+ * should be right now" rather than "where it was when the host pressed play".
+ */
 export function projectRoom(room) {
   if (!room) return null;
   return {
@@ -74,10 +78,21 @@ export function projectRoom(room) {
       id: u.id,
       name: u.name,
       joinedAt: u.joinedAt,
-      currentTime: u.currentTime,
     })),
     fileSignature: room.fileSignature,
-    playback: room.playback,
+    playback: projectPlayback(room.playback),
     activity: room.activity.slice(-50),
+  };
+}
+
+function projectPlayback(p) {
+  if (!p) return p;
+  const rate = p.playbackRate || 1;
+  const elapsedSec = p.isPlaying ? Math.max(0, (Date.now() - p.updatedAt) / 1000) * rate : 0;
+  return {
+    isPlaying: p.isPlaying,
+    playbackRate: rate,
+    currentTime: p.currentTime + elapsedSec,
+    updatedAt: Date.now(),
   };
 }

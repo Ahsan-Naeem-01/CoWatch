@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { formatTime } from '../utils/formatTime.js';
 
 export default function UsersList({ room, selfId, onRename }) {
   const [editingName, setEditingName] = useState('');
@@ -60,9 +59,7 @@ export default function UsersList({ room, selfId, onRename }) {
                   </button>
                 )}
                 <div className="font-mono text-[10px] tracking-cinema uppercase text-bone-300/60 mt-0.5">
-                  {isHost ? 'HOST · ' : ''}
-                  {isSelf ? 'YOU · ' : ''}
-                  at {formatTime(u.currentTime)}
+                  {isHost ? 'HOST' : isSelf ? 'YOU' : 'VIEWER'}
                 </div>
               </div>
               {isHost && <Ribbon>HOST</Ribbon>}

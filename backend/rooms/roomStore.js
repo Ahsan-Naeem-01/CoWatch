@@ -5,7 +5,7 @@
  *   Room shape:
  *   {
  *     name, password, hostId, allowAllControl, createdAt,
- *     users: Map<socketId, { id, name, joinedAt, lastHeartbeat, currentTime }>,
+ *     users: Map<socketId, { id, name, joinedAt }>,
  *     fileSignature: { hash, size, name } | null,
  *     playback: { isPlaying, currentTime, playbackRate, updatedAt },
  *     activity: Array<{ at, kind, message }>
@@ -108,16 +108,6 @@ export const roomStore = {
     if (!room) return null;
     room.allowAllControl = Boolean(value);
     pushActivity(room, 'system', value ? 'Host opened controls to everyone.' : 'Host restricted controls.');
-    return room;
-  },
-
-  recordHeartbeat: (name, userId, currentTime) => {
-    const room = rooms.get(normalizeName(name));
-    if (!room) return null;
-    const user = room.users.get(userId);
-    if (!user) return null;
-    user.lastHeartbeat = Date.now();
-    user.currentTime = currentTime;
     return room;
   },
 

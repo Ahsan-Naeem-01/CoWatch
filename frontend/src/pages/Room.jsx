@@ -210,9 +210,19 @@ export default function Room() {
   const metadataReadyRef = useRef(false);
   const onMetadataLoaded = useCallback(() => {
     metadataReadyRef.current = true;
-    if (!room) return;
-    applySnapshot(room.playback);
-  }, [room, applySnapshot]);
+    // Ask the server for the freshest playback snapshot — it projects the
+    // playhead forward based on how long ago play was pressed, so a peer who
+    // just finished hashing their file still lands at the host's current
+    // position rather than wherever play was originally pressed.
+    socket.emit('sync-state', {}, (resp) => {
+      if (resp?.ok && resp.room?.playback) {
+        applySnapshot(resp.room.playback);
+        setRoom((r) => (r ? { ...r, playback: resp.room.playback } : r));
+      } else if (room?.playback) {
+        applySnapshot(room.playback);
+      }
+    });
+  }, [socket, room, applySnapshot]);
 
   // If a remote play/pause arrived *before* the video element was ready, the
   // sync hook's handler short-circuited and the video stayed paused. Once
@@ -311,11 +321,7 @@ export default function Room() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <SyncIndicator
-              connected={connected}
-              driftMs={videoSync.driftMs}
-              syncing={videoSync.syncing}
-            />
+            <SyncIndicator connected={connected} />
             <HashBadge
               roomSignature={room.fileSignature}
               userSignature={fileHash.signature}
