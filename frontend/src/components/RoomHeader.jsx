@@ -1,7 +1,18 @@
 import { useEffect, useState } from 'react';
+import { Icon } from './Icon.jsx';
+import Brand from './Brand.jsx';
 
-export default function RoomHeader({ room, isHost, connected, onCopy, onLeave, onToggleAllowAll }) {
+export default function RoomHeader({
+  room,
+  isHost,
+  connected,
+  onCopy,
+  onLeave,
+  onToggleAllowAll,
+}) {
   const [now, setNow] = useState(Date.now());
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
     const i = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(i);
@@ -12,48 +23,87 @@ export default function RoomHeader({ room, isHost, connected, onCopy, onLeave, o
   const mm = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
   const ss = String(elapsed % 60).padStart(2, '0');
 
+  const handleCopy = async () => {
+    await onCopy();
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1400);
+  };
+
   return (
-    <header className="px-6 lg:px-10 pt-6 pb-4">
-      <div className="grid grid-cols-12 gap-4 items-end">
-        {/* Slate */}
-        <div className="col-span-12 lg:col-span-7">
-          <div className="flex items-center gap-3 text-bone-300/70 font-mono text-[10px] uppercase tracking-cinema">
-            <span className="block w-2 h-2 rounded-full bg-crimson-500 animate-pulse-soft" />
-            <span>REC</span>
-            <span className="text-bone-300/40">·</span>
-            <span>SCREENING IN PROGRESS</span>
-            <span className="text-bone-300/40">·</span>
-            <span className="text-ember-400">{hh}:{mm}:{ss}</span>
-          </div>
-          <h1 className="font-display text-3xl lg:text-5xl text-bone-50 mt-1 leading-tight italic">
-            {room.name}
-          </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-cinema text-bone-300/70">
-            <span className={connected ? 'text-ember-400' : 'text-crimson-400'}>
-              ● {connected ? 'LINK STABLE' : 'RECONNECTING…'}
+    <header className="border-b border-line bg-bg/80 backdrop-blur-sm sticky top-0 z-20">
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 lg:px-6 py-3">
+        {/* Left — brand + room meta */}
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            className="btn-icon hidden lg:inline-flex"
+            onClick={onLeave}
+            title="Leave room"
+            aria-label="Leave room"
+          >
+            <Icon name="arrow_left" size={16} />
+          </button>
+          <Brand compact />
+          <div className="flex flex-col min-w-0">
+            <span className="eyebrow text-[10px]">
+              Watching · {room.name}
             </span>
-            <span>· {room.users.length} viewer{room.users.length === 1 ? '' : 's'}</span>
-            <span>·</span>
-            <span>{room.allowAllControl ? 'Open seating · all may control' : 'Host-only controls'}</span>
+            <span className="display text-[20px] leading-none truncate max-w-[260px] lg:max-w-[420px]">
+              {room.name}
+            </span>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="col-span-12 lg:col-span-5 flex flex-wrap items-center justify-end gap-2">
+        {/* Center — sync pill */}
+        <div className="flex items-center gap-2">
+          <span
+            className={`pill ${connected ? 'accent' : 'danger'}`}
+            title={connected ? 'Sync stream stable' : 'Reconnecting…'}
+          >
+            <span className="dot" />
+            <span>{connected ? 'In sync' : 'Reconnecting…'}</span>
+          </span>
+          <span className="mono text-[11px] tracking-cinema text-fg-3 hidden md:inline">
+            {hh}:{mm}:{ss}
+          </span>
+        </div>
+
+        {/* Right — actions */}
+        <div className="flex items-center justify-end gap-2 flex-wrap">
           {isHost && (
-            <button onClick={onToggleAllowAll} className="btn-ghost" title="Toggle who can control playback">
-              {room.allowAllControl ? 'Restrict to host' : 'Allow all to control'}
+            <button
+              onClick={onToggleAllowAll}
+              className="btn btn-ghost text-[13px] hidden md:inline-flex"
+              title="Toggle who can control playback"
+            >
+              <Icon
+                name={room.allowAllControl ? 'users' : 'lock'}
+                size={14}
+              />
+              <span className="hidden lg:inline">
+                {room.allowAllControl ? 'Open seating' : 'Host-only'}
+              </span>
             </button>
           )}
-          <button onClick={onCopy} className="btn-ghost">
-            Copy invite link
+          <button
+            onClick={handleCopy}
+            className="btn btn-ghost text-[13px]"
+            title="Copy invite link"
+          >
+            <Icon name={copied ? 'check' : 'copy'} size={14} />
+            <span className="mono text-[12px] tracking-wide hidden sm:inline">
+              r/{room.name}
+            </span>
           </button>
-          <button onClick={onLeave} className="btn-danger">
-            Leave room
+          <button
+            onClick={onLeave}
+            className="btn btn-danger text-[13px]"
+            title="Leave"
+          >
+            <Icon name="exit" size={14} />
+            <span className="hidden md:inline">Leave</span>
           </button>
         </div>
       </div>
-      <div className="hairline mt-6" />
     </header>
   );
 }

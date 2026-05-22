@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket.js';
 import { useApp } from '../context/AppContext.jsx';
+import Brand from '../components/Brand.jsx';
+import { Icon } from '../components/Icon.jsx';
 
-const TAGLINES = [
-  'Press play together.',
-  'A projector for the whole room.',
-  'One reel. Many seats.',
+const HERO_TAGLINES = [
+  'frame by frame.',
+  'in lockstep.',
+  'on every screen.',
 ];
 
 export default function Home() {
@@ -14,23 +16,27 @@ export default function Home() {
   const { userName, setUserName, pushToast } = useApp();
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState('create'); // 'create' | 'join'
+  // 'landing' shows the hero. 'create' / 'join' swap to the auth form.
+  const [view, setView] = useState('landing');
   const [roomName, setRoomName] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState(userName || '');
   const [submitting, setSubmitting] = useState(false);
   const [stats, setStats] = useState({ rooms: 0, users: 0 });
-  const [tagline, setTagline] = useState(TAGLINES[0]);
+  const [taglineIdx, setTaglineIdx] = useState(0);
 
   useEffect(() => {
-    const i = setInterval(() => {
-      setTagline(TAGLINES[Math.floor(Math.random() * TAGLINES.length)]);
-    }, 5200);
+    const i = setInterval(
+      () => setTaglineIdx((n) => (n + 1) % HERO_TAGLINES.length),
+      4200
+    );
     return () => clearInterval(i);
   }, []);
 
   useEffect(() => {
-    const url = (import.meta.env.VITE_SERVER_URL || 'http://localhost:3000') + '/api/rooms/count';
+    const url =
+      (import.meta.env.VITE_SERVER_URL || 'http://localhost:3000') +
+      '/api/rooms/count';
     let stopped = false;
     const refresh = async () => {
       try {
@@ -51,199 +57,380 @@ export default function Home() {
   }, []);
 
   const submit = (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     const safeName = name.trim() || 'Anonymous';
     setUserName(safeName);
     if (!roomName.trim() || !password) {
-      pushToast({ kind: 'warn', title: 'Missing fields', body: 'Room name and password are required.' });
+      pushToast({
+        kind: 'warn',
+        title: 'Missing fields',
+        body: 'Room name and password are required.',
+      });
       return;
     }
     setSubmitting(true);
-    const event = mode === 'create' ? 'create-room' : 'join-room';
-    socket.emit(event, { name: roomName.trim(), password, userName: safeName }, (resp) => {
-      setSubmitting(false);
-      if (resp?.error) {
-        pushToast({ kind: 'error', title: 'Could not enter room', body: resp.error });
-        return;
+    const event = view === 'create' ? 'create-room' : 'join-room';
+    socket.emit(
+      event,
+      { name: roomName.trim(), password, userName: safeName },
+      (resp) => {
+        setSubmitting(false);
+        if (resp?.error) {
+          pushToast({
+            kind: 'error',
+            title: 'Could not enter room',
+            body: resp.error,
+          });
+          return;
+        }
+        navigate(`/room/${encodeURIComponent(roomName.trim())}`, {
+          state: { initialRoom: resp.room, selfId: resp.selfId, password },
+        });
       }
-      // Pass the joined room as initial state to avoid a refetch round-trip.
-      navigate(`/room/${encodeURIComponent(roomName.trim())}`, {
-        state: { initialRoom: resp.room, selfId: resp.selfId, password },
-      });
-    });
+    );
   };
 
   return (
-    <main className="relative z-10 min-h-screen flex flex-col">
-      <Header connected={connected} />
-
-      <section className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-12 px-6 lg:px-16 py-12 lg:py-20 max-w-[1400px] mx-auto w-full">
-        {/* Left: Marquee */}
-        <div className="lg:col-span-7 flex flex-col justify-center">
-          <div className="flex items-center gap-3 mb-6 animate-rise">
-            <span className="block w-2 h-2 rounded-full bg-crimson-500 animate-pulse-soft" />
-            <span className="font-mono text-[10px] uppercase tracking-cinema text-bone-300">
-              REEL ONE · TAKE {String(Math.floor(Math.random() * 99) + 1).padStart(2, '0')} · LIVE
-            </span>
-          </div>
-
-          <h1 className="font-display font-light leading-[0.85] text-bone-50 animate-rise">
-            <span className="block text-[clamp(3.5rem,11vw,9rem)] italic">CoWatch</span>
-            <span className="block text-[clamp(1.5rem,4vw,3rem)] text-ember-400 mt-2 not-italic">
-              {tagline}
-            </span>
-          </h1>
-
-          <p className="mt-8 max-w-xl text-bone-200/80 leading-relaxed animate-rise" style={{ animationDelay: '120ms' }}>
-            Load the same film from your own drive. We never see it. We just keep
-            everyone&rsquo;s playhead within a few hundred milliseconds of each
-            other &mdash; a tiny conductor sitting between your browsers.
-          </p>
-
-          <div className="mt-10 grid grid-cols-3 gap-6 max-w-xl animate-rise" style={{ animationDelay: '240ms' }}>
-            <Stat label="Rooms open" value={stats.rooms} />
-            <Stat label="Seats filled" value={stats.users} />
-            <Stat label="Server" value={connected ? 'ONLINE' : '— —'} mono />
-          </div>
-
-          <div className="mt-14 hairline w-full max-w-2xl" />
-          <FilmStripFooter />
-        </div>
-
-        {/* Right: Entry panel */}
-        <div className="lg:col-span-5 flex items-center">
-          <div className="w-full animate-rise" style={{ animationDelay: '180ms' }}>
-            <ModeToggle mode={mode} setMode={setMode} />
-            <form onSubmit={submit} className="panel mt-4 px-6 py-7">
-              <Field
-                id="displayName"
-                label="Your name"
-                placeholder="e.g. Hitchcock"
-                value={name}
-                onChange={setName}
-                maxLength={24}
-              />
-              <Field
-                id="roomName"
-                label={mode === 'create' ? 'New room title' : 'Existing room title'}
-                placeholder="e.g. Tuesday Night Vertigo"
-                value={roomName}
-                onChange={setRoomName}
-                maxLength={48}
-              />
-              <Field
-                id="password"
-                label="Room password"
-                placeholder="Shared with your viewers"
-                value={password}
-                onChange={setPassword}
-                type="password"
-                maxLength={128}
-              />
-
-              <div className="flex items-center justify-between mt-8">
-                <div className="font-mono text-[10px] text-bone-300/70 tracking-cinema uppercase">
-                  {connected ? 'READY · ENCRYPTED HANDSHAKE' : 'WAITING FOR SERVER…'}
-                </div>
-                <button
-                  type="submit"
-                  disabled={!connected || submitting}
-                  className="btn-primary"
-                >
-                  {submitting ? 'Opening…' : mode === 'create' ? 'Open the room' : 'Take a seat'}
-                  <span aria-hidden>→</span>
-                </button>
-              </div>
-            </form>
-            <p className="mt-4 font-mono text-[10px] tracking-cinema uppercase text-bone-300/60">
-              {mode === 'create'
-                ? '↳ You become the host. Only you can play, pause, or seek.'
-                : '↳ You will load your own copy of the film. Hashes are compared.'}
-            </p>
-          </div>
-        </div>
-      </section>
+    <main className="flex-1 flex flex-col">
+      {view === 'landing' ? (
+        <Landing
+          connected={connected}
+          stats={stats}
+          onCreate={() => setView('create')}
+          onJoin={() => setView('join')}
+          taglineIdx={taglineIdx}
+        />
+      ) : (
+        <AuthScreen
+          kind={view}
+          name={name}
+          setName={setName}
+          roomName={roomName}
+          setRoomName={setRoomName}
+          password={password}
+          setPassword={setPassword}
+          connected={connected}
+          submitting={submitting}
+          onSubmit={submit}
+          onSwap={() => setView(view === 'create' ? 'join' : 'create')}
+          onBack={() => setView('landing')}
+        />
+      )}
     </main>
   );
 }
 
-function Header({ connected }) {
+/* ─────────────────────────────── Landing ─────────────────────────────── */
+function Landing({ connected, stats, onCreate, onJoin, taglineIdx }) {
   return (
-    <header className="px-6 lg:px-16 pt-8 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <ApertureMark />
-        <span className="font-mono text-xs uppercase tracking-cinema text-bone-100">
-          CoWatch <span className="text-bone-300/60">· sync-relay</span>
-        </span>
-      </div>
-      <div className="flex items-center gap-4 font-mono text-[10px] uppercase tracking-cinema">
-        <span className={connected ? 'text-ember-400' : 'text-crimson-400'}>
-          ● {connected ? 'SYNC LINK ESTABLISHED' : 'NO LINK'}
-        </span>
-        <span className="text-bone-300/60 hidden sm:inline">
-          {new Intl.DateTimeFormat(undefined, {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-          }).format(new Date())}
-        </span>
-      </div>
-    </header>
-  );
-}
+    <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] fade-in min-h-0">
+      {/* Left — hero */}
+      <div className="px-8 lg:px-16 py-12 lg:py-16 flex flex-col justify-between relative overflow-hidden">
+        <div className="flex items-center justify-between">
+          <Brand />
+          <span className="eyebrow flex items-center gap-2">
+            <span
+              className={`inline-block w-1.5 h-1.5 rounded-full ${
+                connected ? 'bg-accent' : 'bg-danger'
+              }`}
+            />
+            <span>
+              {connected ? 'Sync relay · online' : 'Offline · reconnecting…'}
+            </span>
+          </span>
+        </div>
 
-function ApertureMark() {
-  return (
-    <span className="inline-block w-7 h-7 relative">
-      <span className="absolute inset-0 rounded-full border border-ember-500 reel-spin" />
-      <span className="absolute inset-[3px] rounded-full border border-bone-300/40" />
-      <span className="absolute inset-[10px] rounded-full bg-ember-500" />
-    </span>
+        <div className="max-w-[600px] flex flex-col gap-6 mt-12 lg:mt-0">
+          <span className="eyebrow">Synchronized cinema for two or more</span>
+          <h1
+            className="display"
+            style={{
+              fontSize: 'clamp(48px, 7vw, 88px)',
+              lineHeight: 0.95,
+              letterSpacing: '-0.025em',
+            }}
+          >
+            Watch <em className="text-accent italic">together</em>,
+            <br />
+            <span className="block transition-opacity">
+              {HERO_TAGLINES[taglineIdx]}
+            </span>
+          </h1>
+          <p className="text-fg-2 text-[17px] leading-relaxed max-w-[480px]">
+            Drop a file in, share a room code, and press play in lockstep.
+            CoWatch keeps every screen on the same frame — no buffering
+            tug-of-war, no “did you pause?”
+          </p>
+          <div className="flex flex-wrap gap-3 mt-2">
+            <button className="btn btn-primary" onClick={onCreate}>
+              <Icon name="plus" size={16} />
+              Create a room
+            </button>
+            <button className="btn btn-ghost" onClick={onJoin}>
+              <Icon name="arrow_join" size={16} />
+              Join a room
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-12 flex flex-col gap-6">
+          <div className="hairline" />
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div className="flex flex-wrap gap-10">
+              <Stat label="Rooms open" value={stats.rooms} />
+              <Stat label="Seats filled" value={stats.users} />
+              <Stat
+                label="Latency"
+                value={connected ? '< 250ms' : '— —'}
+                mono
+              />
+            </div>
+            <span className="eyebrow">© 2026 CoWatch</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Right — preview + feature list */}
+      <div className="bg-bg-2 border-l border-line px-8 lg:px-16 py-12 lg:py-16 flex flex-col justify-center gap-10 relative">
+        <span className="eyebrow">Three rooms, one frame</span>
+
+        <div className="preview-stack" aria-hidden="true">
+          <div className="preview-card p1">
+            <div className="preview-thumb">
+              <svg viewBox="0 0 24 24">
+                <path d="M6 4l14 8-14 8V4z" fill="currentColor" />
+              </svg>
+            </div>
+          </div>
+          <div className="preview-card p2">
+            <div className="preview-thumb">
+              <svg viewBox="0 0 24 24">
+                <path d="M6 4l14 8-14 8V4z" fill="currentColor" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <ul className="list-none m-0 p-0 flex flex-col gap-0 max-w-[420px]">
+          <Feature
+            n="01"
+            title="Frame-perfect sync"
+            text="If one pauses, all pause. If one seeks, all seek."
+          />
+          <Feature
+            n="02"
+            title="Bring your own file"
+            text="Everyone loads the same source locally — nothing leaves your machine."
+          />
+          <Feature
+            n="03"
+            title="Chat & activity"
+            text="Live messaging beside the screen and a log so nothing slips by."
+          />
+        </ul>
+      </div>
+    </div>
   );
 }
 
 function Stat({ label, value, mono }) {
   return (
     <div>
-      <div className={`text-bone-50 ${mono ? 'font-mono text-base' : 'font-display text-3xl'}`}>
+      <div
+        className={`text-fg ${mono ? 'mono text-base' : 'display text-3xl'}`}
+      >
         {value}
       </div>
-      <div className="font-mono text-[10px] uppercase tracking-cinema text-bone-300/70 mt-1">
+      <div className="mono text-[10px] uppercase tracking-cinema text-fg-3 mt-1">
         {label}
       </div>
     </div>
   );
 }
 
-function ModeToggle({ mode, setMode }) {
-  const tab = (key, label) => (
-    <button
-      type="button"
-      onClick={() => setMode(key)}
-      className={`flex-1 font-mono text-[11px] uppercase tracking-cinema py-3 transition-colors ${
-        mode === key
-          ? 'text-ink-900 bg-bone-50'
-          : 'text-bone-300 hover:text-bone-50 bg-transparent'
-      }`}
-    >
-      {label}
-    </button>
-  );
+function Feature({ n, title, text }) {
   return (
-    <div className="flex border border-bone-300/20">
-      {tab('create', 'Open a new room')}
-      <div className="w-px bg-bone-300/20" />
-      {tab('join', 'Join an existing room')}
+    <li className="grid grid-cols-[28px_1fr] gap-3 py-4 border-t border-line last:border-b last:border-line">
+      <span className="mono text-[11px] text-accent tracking-cinema">{n}</span>
+      <span>
+        <b className="block text-fg font-medium text-[14px] mb-1">{title}</b>
+        <span className="text-fg-2 text-[14px] leading-snug">{text}</span>
+      </span>
+    </li>
+  );
+}
+
+/* ─────────────────────────────── Auth ─────────────────────────────── */
+function AuthScreen({
+  kind,
+  name,
+  setName,
+  roomName,
+  setRoomName,
+  password,
+  setPassword,
+  connected,
+  submitting,
+  onSubmit,
+  onSwap,
+  onBack,
+}) {
+  const isCreate = kind === 'create';
+  return (
+    <div className="flex-1 flex flex-col fade-in">
+      {/* Topbar */}
+      <div className="flex items-center justify-between px-6 lg:px-10 py-5 border-b border-line">
+        <Brand />
+        <div className="flex items-center gap-3">
+          <span className="eyebrow hidden sm:inline">
+            {connected ? '● link stable' : '● waiting for relay'}
+          </span>
+          <button className="btn btn-ghost" onClick={onBack}>
+            <Icon name="arrow_left" size={14} />
+            Back
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 min-h-0">
+        {/* Side art */}
+        <div className="bg-bg-2 border-r border-line px-10 py-12 lg:py-16 flex flex-col justify-between overflow-hidden relative">
+          <span className="eyebrow">
+            {isCreate ? 'Step 01 · Create' : 'Step 01 · Join'}
+          </span>
+          <div className="flex-1 flex items-center justify-center">
+            <div className="orb" />
+          </div>
+          <div
+            className="display max-w-[420px] text-fg-2 italic"
+            style={{ fontSize: 22, lineHeight: 1.3 }}
+          >
+            {isCreate ? (
+              <>
+                “A room is a private living-room.{' '}
+                <em className="not-italic text-accent">
+                  Pick a name your people will remember.
+                </em>
+                ”
+              </>
+            ) : (
+              <>
+                “Use the room name your friend sent you and the password they
+                set.{' '}
+                <em className="not-italic text-accent">That's it.</em>
+                ”
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Form */}
+        <div className="px-8 lg:px-12 py-12 lg:py-16 flex items-center justify-center">
+          <form
+            onSubmit={onSubmit}
+            className="w-full max-w-[440px] flex flex-col gap-6"
+          >
+            <span className="eyebrow">
+              {isCreate ? 'A new room' : 'Existing room'}
+            </span>
+            <h2 className="display text-[44px] m-0">
+              {isCreate ? 'Set up your room.' : 'Step into the room.'}
+            </h2>
+            <p className="text-fg-2 text-[15px] leading-relaxed -mt-2">
+              {isCreate
+                ? 'Pick a room name and password. Anyone with both can join.'
+                : 'Enter the name and password your host shared with you.'}
+            </p>
+
+            <div className="flex flex-col gap-4 mt-2">
+              <Field
+                id="displayName"
+                label="Your display name"
+                placeholder="What should people call you?"
+                value={name}
+                onChange={setName}
+                maxLength={24}
+              />
+              <Field
+                id="roomName"
+                label="Room name"
+                placeholder={
+                  isCreate ? 'e.g. tuesday-rewatch' : 'e.g. midnight-cinema'
+                }
+                value={roomName}
+                onChange={setRoomName}
+                maxLength={48}
+              />
+              <Field
+                id="password"
+                label={isCreate ? 'Set a password' : 'Password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={setPassword}
+                type="password"
+                maxLength={128}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-3 mt-2 flex-wrap">
+              <div className="text-fg-3 text-[13px]">
+                {isCreate ? (
+                  <>
+                    Already have a room?{' '}
+                    <a
+                      onClick={onSwap}
+                      className="text-accent hover:underline cursor-pointer"
+                    >
+                      Join one instead
+                    </a>
+                    .
+                  </>
+                ) : (
+                  <>
+                    No room yet?{' '}
+                    <a
+                      onClick={onSwap}
+                      className="text-accent hover:underline cursor-pointer"
+                    >
+                      Create your own
+                    </a>
+                    .
+                  </>
+                )}
+              </div>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={!connected || submitting}
+              >
+                {submitting
+                  ? 'Opening…'
+                  : isCreate
+                  ? 'Create room'
+                  : 'Enter room'}
+                <Icon name="arrow_right" size={14} />
+              </button>
+            </div>
+
+            <div className="mt-2 eyebrow flex items-center gap-2">
+              <Icon name="lock" size={12} />
+              <span>
+                {isCreate
+                  ? 'You become the host. Only you can play, pause, or seek.'
+                  : 'Files compared by hash — bring the same copy.'}
+              </span>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
 
 function Field({ id, label, value, onChange, type = 'text', placeholder, maxLength }) {
   return (
-    <div className="mt-6 first:mt-0">
-      <label htmlFor={id} className="label">
-        {label}
-      </label>
+    <div className="field-wrap">
+      <label htmlFor={id}>{label}</label>
       <input
         id={id}
         type={type}
@@ -253,20 +440,8 @@ function Field({ id, label, value, onChange, type = 'text', placeholder, maxLeng
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="field"
+        className="input"
       />
     </div>
-  );
-}
-
-function FilmStripFooter() {
-  return (
-    <footer className="mt-10 flex items-center gap-4 font-mono text-[10px] tracking-cinema uppercase text-bone-300/50">
-      <span className="tick">No video ever touches our server</span>
-      <span className="text-bone-300/30">·</span>
-      <span>Event-driven playback sync</span>
-      <span className="text-bone-300/30">·</span>
-      <span>WebSocket relay only</span>
-    </footer>
   );
 }

@@ -8,7 +8,6 @@ import FileSelector from '../components/FileSelector.jsx';
 import UsersList from '../components/UsersList.jsx';
 import ChatPanel from '../components/ChatPanel.jsx';
 import ActivityLog from '../components/ActivityLog.jsx';
-import SyncIndicator from '../components/SyncIndicator.jsx';
 import RoomHeader from '../components/RoomHeader.jsx';
 
 export default function Room() {
@@ -22,7 +21,8 @@ export default function Room() {
   const [room, setRoom] = useState(location.state?.initialRoom || null);
   const [selfId, setSelfId] = useState(location.state?.selfId || null);
   const [chatMessages, setChatMessages] = useState([]);
-  const [activeTab, setActiveTab] = useState('viewers'); // 'viewers' | 'chat' | 'activity'
+  // Mobile-only side-panel selector. Desktop shows all three at once.
+  const [activeTab, setActiveTab] = useState('chat');
   const [file, setFile] = useState(null);
   const [fileObjectUrl, setFileObjectUrl] = useState(null);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
@@ -34,8 +34,6 @@ export default function Room() {
   const canControl = !!(room && (isHost || room.allowAllControl));
 
   // ---------- Initial entry guard / reconnect recovery ----------
-  // If a user lands directly on /room/:name (e.g. via copied link or refresh),
-  // we need a password to (re)join. Bounce them home with a hint.
   useEffect(() => {
     if (room) return;
     pushToast({
@@ -49,16 +47,22 @@ export default function Room() {
   // ---------- Re-join on reconnect ----------
   useEffect(() => {
     if (!connected) return;
-    // If we have a selfId already, the connection is fresh enough.
     if (socket.id === selfId) return;
-    // Otherwise: silently rejoin using the stored password.
     if (!passwordRef.current) return;
     socket.emit(
       'join-room',
-      { name: roomNameParam, password: passwordRef.current, userName: userName || 'Anonymous' },
+      {
+        name: roomNameParam,
+        password: passwordRef.current,
+        userName: userName || 'Anonymous',
+      },
       (resp) => {
         if (resp?.error) {
-          pushToast({ kind: 'error', title: 'Reconnect failed', body: resp.error });
+          pushToast({
+            kind: 'error',
+            title: 'Reconnect failed',
+            body: resp.error,
+          });
           navigate('/', { replace: true });
           return;
         }
@@ -72,23 +76,27 @@ export default function Room() {
   useEffect(() => {
     const onRoomState = (next) => setRoom(next);
     const onChat = (msg) =>
-      setChatMessages((prev) => (prev.length >= 200 ? [...prev.slice(-199), msg] : [...prev, msg]));
+      setChatMessages((prev) =>
+        prev.length >= 200 ? [...prev.slice(-199), msg] : [...prev, msg]
+      );
     const onConnected = ({ user }) =>
-      pushToast({ kind: 'info', title: 'New viewer', body: `${user.name} took a seat.` });
-    const onDisconnected = () => {
-      // Light touch — room-state will reconcile names.
-    };
+      pushToast({
+        kind: 'info',
+        title: 'New viewer',
+        body: `${user.name} took a seat.`,
+      });
+    const onDisconnected = () => {};
     const onHostChange = ({ hostId }) => {
       pushToast({
         kind: 'info',
         title: 'Host changed',
-        body: hostId === socket.id ? 'You are now the host.' : 'A new host has been promoted.',
+        body:
+          hostId === socket.id
+            ? 'You are now the host.'
+            : 'A new host has been promoted.',
       });
     };
     const onControlToggled = ({ allowAllControl }) => {
-      // Propagate the new permission into local room state so every viewer's
-      // `canControl` flips immediately — without it, peers stayed locked until
-      // an unrelated room-state push (or a manual reload) arrived.
       setRoom((r) => (r ? { ...r, allowAllControl } : r));
       pushToast({
         kind: 'info',
@@ -101,18 +109,24 @@ export default function Room() {
     const onActivity = (activity) =>
       setRoom((r) => (r ? { ...r, activity } : r));
     const onError = (msg) =>
-      pushToast({ kind: 'error', title: 'Sync error', body: String(msg || 'Unknown error') });
+      pushToast({
+        kind: 'error',
+        title: 'Sync error',
+        body: String(msg || 'Unknown error'),
+      });
 
-    // Mirror remote playback events into room.playback so the snapshot
-    // re-applied on metadata-load / state-change effect sees fresh data.
     const patchPlayback = (patch) =>
-      setRoom((r) => (r ? { ...r, playback: { ...r.playback, ...patch } } : r));
+      setRoom((r) =>
+        r ? { ...r, playback: { ...r.playback, ...patch } } : r
+      );
     const onRemotePlayState = ({ currentTime }) =>
       patchPlayback({ isPlaying: true, currentTime });
     const onRemotePauseState = ({ currentTime }) =>
       patchPlayback({ isPlaying: false, currentTime });
-    const onRemoteSeekState = ({ currentTime }) => patchPlayback({ currentTime });
-    const onRemoteRateState = ({ playbackRate }) => patchPlayback({ playbackRate });
+    const onRemoteSeekState = ({ currentTime }) =>
+      patchPlayback({ currentTime });
+    const onRemoteRateState = ({ playbackRate }) =>
+      patchPlayback({ playbackRate });
 
     socket.on('room-state', onRoomState);
     socket.on('chat-message', onChat);
@@ -143,16 +157,6 @@ export default function Room() {
     };
   }, [socket, pushToast]);
 
-  // ---------- Leave-on-exit ----------
-  // We intentionally do NOT call `socket.emit('leave-room')` from an effect
-  // cleanup: React 18 StrictMode invokes effect cleanups synchronously after
-  // the first mount in development, which would silently remove the host
-  // from a freshly-created room and let the server garbage-collect it
-  // before any peer could join. Cleanup is handled by:
-  //   - The explicit `leave()` button below.
-  //   - The server's `disconnect` handler (covers tab close / refresh).
-  // The object-URL is released in `handleFileChosen` and `leave()`.
-
   // ---------- File handling ----------
   const handleFileChosen = useCallback(
     (chosen) => {
@@ -165,11 +169,10 @@ export default function Room() {
     [fileObjectUrl]
   );
 
-  // ---------- Late-join: apply playback snapshot after the video can play ----------
-  // Stable callback so `applySnapshot` (and the inner socket handlers in
-  // useVideoSync) don't get re-created on every render, which would otherwise
-  // re-trigger the "snapshot follow-up" effect below in a loop.
-  const handleAutoplayBlocked = useCallback(() => setAutoplayBlocked(true), []);
+  const handleAutoplayBlocked = useCallback(
+    () => setAutoplayBlocked(true),
+    []
+  );
   const videoSync = useVideoSync({
     socket,
     videoRef,
@@ -183,30 +186,27 @@ export default function Room() {
   const metadataReadyRef = useRef(false);
   const onMetadataLoaded = useCallback(() => {
     metadataReadyRef.current = true;
-    // Ask the server for the freshest playback snapshot — it projects the
-    // playhead forward based on how long ago play was pressed, so a peer who
-    // just finished hashing their file still lands at the host's current
-    // position rather than wherever play was originally pressed.
     socket.emit('sync-state', {}, (resp) => {
       if (resp?.ok && resp.room?.playback) {
         applySnapshot(resp.room.playback);
-        setRoom((r) => (r ? { ...r, playback: resp.room.playback } : r));
+        setRoom((r) =>
+          r ? { ...r, playback: resp.room.playback } : r
+        );
       } else if (room?.playback) {
         applySnapshot(room.playback);
       }
     });
   }, [socket, room, applySnapshot]);
 
-  // If a remote play/pause arrived *before* the video element was ready, the
-  // sync hook's handler short-circuited and the video stayed paused. Once
-  // metadata has loaded and `room.playback.isPlaying` flips, re-apply the
-  // snapshot so the video catches up. Keyed on the boolean state transition
-  // (and on rate) so reconnects and host-driven changes both converge here.
   useEffect(() => {
     if (!metadataReadyRef.current) return;
     if (!room?.playback) return;
     applySnapshot(room.playback);
-  }, [room?.playback?.isPlaying, room?.playback?.playbackRate, applySnapshot]);
+  }, [
+    room?.playback?.isPlaying,
+    room?.playback?.playbackRate,
+    applySnapshot,
+  ]);
 
   const sendChat = useCallback(
     (text) => {
@@ -225,7 +225,11 @@ export default function Room() {
     const url = window.location.href;
     try {
       await navigator.clipboard.writeText(url);
-      pushToast({ kind: 'success', title: 'Link copied', body: 'Share the password separately.' });
+      pushToast({
+        kind: 'success',
+        title: 'Link copied',
+        body: 'Share the password separately.',
+      });
     } catch {
       pushToast({ kind: 'warn', title: 'Copy failed', body: url });
     }
@@ -249,8 +253,14 @@ export default function Room() {
 
   if (!room) return null;
 
+  const tabs = [
+    { key: 'chat', label: 'Chat', count: chatMessages.length },
+    { key: 'viewers', label: 'Viewers', count: room.users.length },
+    { key: 'activity', label: 'Activity', count: (room.activity || []).length },
+  ];
+
   return (
-    <main className="relative z-10 min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col fade-in min-h-0 overflow-hidden">
       <RoomHeader
         room={room}
         isHost={isHost}
@@ -260,10 +270,19 @@ export default function Room() {
         onToggleAllowAll={toggleAllowAll}
       />
 
-      <section className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 px-6 lg:px-10 pb-10">
-        {/* Theater */}
-        <div className="lg:col-span-8 xl:col-span-9 flex flex-col gap-4">
-          <div className="relative panel overflow-hidden">
+      {/* Unified layout — stacks on mobile, becomes 3-column theater on lg+.
+          Rendering a single VideoPlayer (not duplicated per breakpoint) keeps
+          the same <video> element and ref alive across resizes, so playback
+          state is preserved and only one ref claim happens. */}
+      <section className="flex-1 px-4 lg:px-5 pb-5 pt-4 min-h-0 flex flex-col gap-4 lg:grid lg:grid-cols-[280px_1fr_360px] lg:grid-rows-1">
+        {/* Activity rail — desktop sidebar only */}
+        <div className="hidden lg:flex min-h-0">
+          <ActivityLog room={room} />
+        </div>
+
+        {/* Center column: video stage + (desktop footer | mobile tabs) */}
+        <div className="flex flex-col min-h-0 gap-3">
+          <div className="rounded-[14px] overflow-hidden border border-line bg-black relative aspect-video flex-shrink-0 lg:aspect-auto lg:flex-1 lg:flex-shrink lg:min-h-0">
             {!fileObjectUrl ? (
               <FileSelector onPick={handleFileChosen} />
             ) : (
@@ -282,63 +301,105 @@ export default function Room() {
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <SyncIndicator connected={connected} />
-            {file && (
+          {/* Desktop foot bar */}
+          <div className="hidden lg:block">
+            <RoomFootBar
+              file={file}
+              onClearFile={() => {
+                if (fileObjectUrl) URL.revokeObjectURL(fileObjectUrl);
+                setFile(null);
+                setFileObjectUrl(null);
+              }}
+              users={room.users}
+            />
+          </div>
+
+          {/* Mobile tab switcher */}
+          <div className="lg:hidden flex border border-line rounded-full bg-surface p-1 self-start">
+            {tabs.map((t) => (
               <button
-                onClick={() => {
-                  if (fileObjectUrl) URL.revokeObjectURL(fileObjectUrl);
-                  setFile(null);
-                  setFileObjectUrl(null);
-                }}
-                className="btn-ghost"
+                key={t.key}
+                onClick={() => setActiveTab(t.key)}
+                className={`px-4 py-2 rounded-full mono text-[11px] tracking-cinema uppercase transition-colors ${
+                  activeTab === t.key
+                    ? 'bg-accent text-white'
+                    : 'text-fg-2 hover:text-fg'
+                }`}
               >
-                Change reel
+                {t.label}
+                <span className="ml-1.5 opacity-70">{t.count}</span>
               </button>
+            ))}
+          </div>
+
+          {/* Mobile tab content */}
+          <div className="lg:hidden card flex-1 min-h-0 flex flex-col overflow-hidden">
+            {activeTab === 'chat' && (
+              <ChatPanel
+                messages={chatMessages}
+                onSend={sendChat}
+                selfId={selfId}
+                users={room.users}
+                embed
+              />
             )}
+            {activeTab === 'viewers' && (
+              <UsersList room={room} selfId={selfId} onRename={renameSelf} />
+            )}
+            {activeTab === 'activity' && <ActivityLog room={room} embed />}
           </div>
         </div>
 
-        {/* Side panel */}
-        <aside className="lg:col-span-4 xl:col-span-3 flex flex-col">
-          <SidePanelTabs active={activeTab} onChange={setActiveTab} unreadCount={0} />
-          <div className="panel flex-1 min-h-[500px] mt-0 -mt-px border-t-0 flex flex-col">
-            {activeTab === 'viewers' && (
-              <UsersList
-                room={room}
-                selfId={selfId}
-                onRename={renameSelf}
-              />
-            )}
-            {activeTab === 'chat' && (
-              <ChatPanel messages={chatMessages} onSend={sendChat} selfId={selfId} />
-            )}
-            {activeTab === 'activity' && <ActivityLog room={room} />}
-          </div>
-        </aside>
+        {/* Chat — desktop sidebar only */}
+        <div className="hidden lg:flex min-h-0">
+          <ChatPanel
+            messages={chatMessages}
+            onSend={sendChat}
+            selfId={selfId}
+            users={room.users}
+          />
+        </div>
       </section>
-    </main>
+    </div>
   );
 }
 
-function SidePanelTabs({ active, onChange }) {
-  const tab = (key, label) => (
-    <button
-      onClick={() => onChange(key)}
-      className={`flex-1 font-mono text-[10px] uppercase tracking-cinema py-3 transition-colors border-b-2 ${
-        active === key
-          ? 'text-bone-50 border-ember-500'
-          : 'text-bone-300/70 border-transparent hover:text-bone-50'
-      }`}
-    >
-      {label}
-    </button>
-  );
+/* ── Tiny strip beneath the video on desktop showing viewers ── */
+function RoomFootBar({ file, onClearFile, users }) {
   return (
-    <div className="flex border border-bone-300/10 bg-ink-800/70">
-      {tab('viewers', 'Viewers')}
-      {tab('chat', 'Chat')}
-      {tab('activity', 'Activity')}
+    <div className="card flex items-center gap-4 px-4 py-3 flex-wrap">
+      <div className="mono text-[11px] uppercase tracking-cinema text-fg-3 flex-shrink-0">
+        In the room
+      </div>
+      <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
+        {users.slice(0, 6).map((u, i) => (
+          <div
+            key={u.id}
+            className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-line bg-bg-2"
+            title={u.name}
+          >
+            <span
+              className={`av av-${i % 6}`}
+              style={{ width: 22, height: 22, fontSize: 10 }}
+            >
+              {(u.name || '?').slice(0, 1).toUpperCase()}
+            </span>
+            <span className="text-[12px] text-fg truncate max-w-[120px]">
+              {u.name}
+            </span>
+          </div>
+        ))}
+        {users.length > 6 && (
+          <span className="mono text-[12px] text-fg-3">
+            + {users.length - 6} more
+          </span>
+        )}
+      </div>
+      {file && (
+        <button onClick={onClearFile} className="btn btn-ghost text-[13px]">
+          Change reel
+        </button>
+      )}
     </div>
   );
 }

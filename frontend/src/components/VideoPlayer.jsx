@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatTime } from '../utils/formatTime.js';
+import { Icon } from './Icon.jsx';
 
 /**
- * Custom HTML5 video player with cinema-noir controls. Native controls are
- * hidden so we can present a coherent, theme-aware control bar (and so we can
- * disable controls for non-host viewers when allowAllControl is off).
+ * Custom HTML5 video player with the Midnight theme. Native controls are
+ * hidden so we can render a coherent control bar (and so we can disable
+ * controls for non-host viewers when allowAllControl is off).
  */
 
 const RATES = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -29,9 +30,9 @@ export default function VideoPlayer({
   const [rateOpen, setRateOpen] = useState(false);
   const [showSubsInput, setShowSubsInput] = useState(false);
   const [subtitleTrack, setSubtitleTrack] = useState(null);
+  const [hovering, setHovering] = useState(false);
   const containerRef = useRef(null);
 
-  // Subscribe to native events to keep the UI honest.
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -101,7 +102,6 @@ export default function VideoPlayer({
 
   const handleSubtitleFile = (file) => {
     if (!file || !videoRef.current) return;
-    // Remove old track elements
     const v = videoRef.current;
     [...v.querySelectorAll('track')].forEach((t) => t.remove());
     const url = URL.createObjectURL(file);
@@ -116,14 +116,27 @@ export default function VideoPlayer({
     setShowSubsInput(false);
   };
 
+  const seekBy = (delta) => {
+    const v = videoRef.current;
+    if (!v || !canControl) return;
+    v.currentTime = Math.max(0, Math.min(duration || v.duration, v.currentTime + delta));
+  };
+
   const pct = duration ? (time / duration) * 100 : 0;
+  const currentRate = videoRef.current?.playbackRate || 1;
 
   return (
-    <div ref={containerRef} className="relative w-full bg-black aspect-video group">
+    <div
+      ref={containerRef}
+      className="relative w-full h-full bg-black group"
+      style={{ isolation: 'isolate' }}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
+    >
       <video
         ref={videoRef}
         src={src}
-        className="w-full h-full"
+        className="block w-full h-full object-contain bg-black"
         playsInline
         controls={false}
         preload="metadata"
@@ -135,25 +148,22 @@ export default function VideoPlayer({
           onClick={() => {
             const v = videoRef.current;
             if (!v) return;
-            // The user gesture grants both unmute and play permissions.
             v.muted = false;
             v.play().catch(() => {});
             onResolveAutoplay?.();
           }}
-          className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          className="absolute inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-10"
         >
           <div className="text-center">
-            <div className="font-mono text-[10px] uppercase tracking-cinema text-bone-300/70">
-              Browser is blocking autoplay
+            <div className="eyebrow">Browser is blocking autoplay</div>
+            <div className="display text-3xl text-fg italic mt-1">
+              Tap to begin
             </div>
-            <div className="font-display text-3xl text-bone-50 italic mt-1">Tap to begin</div>
           </div>
         </button>
       )}
 
-      {/* "Sound off" hint — appears while the video is muted (e.g. after the
-          auto-mute fallback engaged) so the viewer knows audio is recoverable
-          with a single click. Hidden once the user un-mutes. */}
+      {/* Muted hint */}
       {muted && !autoplayBlocked && playing && (
         <button
           onClick={() => {
@@ -161,93 +171,132 @@ export default function VideoPlayer({
             if (!v) return;
             v.muted = false;
           }}
-          className="absolute top-3 left-3 panel px-3 py-2 flex items-center gap-2 hover:bg-ember-500 hover:text-ink-900 transition-colors"
+          className="absolute top-3 left-3 pill z-10 hover:bg-accent hover:text-white"
         >
-          <MutedIcon />
-          <span className="font-mono text-[10px] uppercase tracking-cinema">
-            Sound off · tap for audio
-          </span>
+          <Icon name="muted" size={13} />
+          Sound off · tap for audio
         </button>
       )}
 
+      {/* Lock badge for non-controllers */}
+      {!canControl && (
+        <div className="absolute top-3 right-3 pill z-10">
+          <Icon name={isHost ? 'crown' : 'lock'} size={11} />
+          {isHost ? 'host' : 'spectator · host controls'}
+        </div>
+      )}
+
       {/* control bar */}
-      <div className="absolute left-0 right-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent pt-12 px-4 pb-3 opacity-90 group-hover:opacity-100 transition-opacity">
+      <div
+        className={`absolute left-0 right-0 bottom-0 px-4 pt-12 pb-3 z-10 transition-opacity duration-200 ${
+          hovering || !playing ? 'opacity-100' : 'opacity-0'
+        }`}
+        style={{
+          background:
+            'linear-gradient(to top, rgba(0,0,0,0.85), rgba(0,0,0,0.4) 60%, transparent)',
+        }}
+      >
         {/* Scrubber */}
         <div
           onClick={onScrub}
-          className={`relative h-[3px] w-full bg-bone-300/15 ${
+          className={`relative h-1 w-full bg-white/16 rounded-full ${
             canControl ? 'cursor-pointer' : 'cursor-not-allowed'
           }`}
           aria-label="Scrub timeline"
         >
           <div
-            className="absolute inset-y-0 left-0 bg-ember-500"
+            className="absolute inset-y-0 left-0 bg-accent rounded-full"
             style={{ width: `${pct}%` }}
           />
           <div
-            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 -ml-1.5 rounded-full bg-ember-500 shadow-glow-amber"
+            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 -ml-1.5 rounded-full bg-white shadow-[0_0_0_4px_rgba(124,124,245,0.45)]"
             style={{ left: `${pct}%` }}
           />
         </div>
 
-        <div className="flex items-center justify-between mt-3 text-bone-100">
-          <div className="flex items-center gap-3">
-            <ControlButton onClick={togglePlay} disabled={!canControl} aria-label={playing ? 'Pause' : 'Play'}>
-              {playing ? <PauseIcon /> : <PlayIcon />}
-            </ControlButton>
+        <div className="flex items-center justify-between mt-3 text-white gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <CtrlBtn
+              onClick={() => seekBy(-10)}
+              disabled={!canControl}
+              aria-label="Back 10s"
+            >
+              <Icon name="rewind" size={14} />
+            </CtrlBtn>
+            <CtrlBtn
+              onClick={togglePlay}
+              disabled={!canControl}
+              accent
+              aria-label={playing ? 'Pause' : 'Play'}
+            >
+              <Icon name={playing ? 'pause' : 'play'} size={16} />
+            </CtrlBtn>
+            <CtrlBtn
+              onClick={() => seekBy(10)}
+              disabled={!canControl}
+              aria-label="Forward 10s"
+            >
+              <Icon name="skip" size={14} />
+            </CtrlBtn>
 
-            <ControlButton onClick={toggleMute} aria-label={muted ? 'Unmute' : 'Mute'}>
-              {muted || volume === 0 ? <MutedIcon /> : <SoundIcon />}
-            </ControlButton>
+            <div className="flex items-center gap-2 ml-2">
+              <CtrlBtn
+                onClick={toggleMute}
+                aria-label={muted ? 'Unmute' : 'Mute'}
+              >
+                <Icon name={muted || volume === 0 ? 'muted' : 'sound'} size={14} />
+              </CtrlBtn>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={muted ? 0 : volume}
+                onChange={(e) => {
+                  const v = videoRef.current;
+                  if (!v) return;
+                  const next = Number(e.target.value);
+                  v.volume = next;
+                  v.muted = next === 0;
+                }}
+                className="w-20 accent-[#7c7cf5]"
+                aria-label="Volume"
+              />
+            </div>
 
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={muted ? 0 : volume}
-              onChange={(e) => {
-                const v = videoRef.current;
-                if (!v) return;
-                const next = Number(e.target.value);
-                v.volume = next;
-                v.muted = next === 0;
-              }}
-              className="w-20 accent-ember-500"
-              aria-label="Volume"
-            />
-
-            <div className="font-mono text-xs tracking-wide text-bone-200 ml-3 tabular-nums">
-              <span className="text-bone-50">{formatTime(time)}</span>
-              <span className="text-bone-300/40 mx-1.5">/</span>
-              <span>{formatTime(duration)}</span>
+            <div className="mono text-[12px] text-white/90 ml-2 tabular-nums">
+              <span>{formatTime(time)}</span>
+              <span className="text-white/40 mx-1.5">/</span>
+              <span className="text-white/60">{formatTime(duration)}</span>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             {file && (
-              <span className="hidden md:inline font-mono text-[10px] uppercase tracking-cinema text-bone-300/60 mr-2 truncate max-w-[200px]">
+              <span className="hidden md:inline mono text-[10px] uppercase tracking-cinema text-white/55 mr-2 truncate max-w-[200px]">
                 {file.name}
               </span>
             )}
 
             <div className="relative">
-              <ControlButton
+              <CtrlBtn
                 onClick={() => setRateOpen((v) => !v)}
                 disabled={!canControl}
                 aria-label="Playback speed"
               >
-                <span className="font-mono text-xs">{videoRef.current?.playbackRate || 1}x</span>
-              </ControlButton>
+                <span className="mono text-[11px]">{currentRate}×</span>
+              </CtrlBtn>
               {rateOpen && (
-                <div className="absolute bottom-full right-0 mb-2 panel py-1 min-w-[80px]">
+                <div className="absolute bottom-full right-0 mb-2 card py-1 min-w-[88px] bg-surface shadow-pop">
                   {RATES.map((r) => (
                     <button
                       key={r}
                       onClick={() => onChangeRate(r)}
-                      className="block w-full text-left px-3 py-1.5 font-mono text-xs hover:bg-bone-50/5 text-bone-100"
+                      className={`block w-full text-left px-3 py-1.5 mono text-[12px] hover:bg-surface-2 ${
+                        r === currentRate ? 'text-accent' : 'text-fg'
+                      }`}
                     >
-                      {r}x
+                      {r}×
                     </button>
                   ))}
                 </div>
@@ -255,22 +304,23 @@ export default function VideoPlayer({
             </div>
 
             <div className="relative">
-              <ControlButton onClick={() => setShowSubsInput((v) => !v)} aria-label="Subtitles">
-                <span className="font-mono text-[10px] uppercase tracking-cinema">CC</span>
-              </ControlButton>
+              <CtrlBtn
+                onClick={() => setShowSubsInput((v) => !v)}
+                aria-label="Subtitles"
+              >
+                <Icon name="cc" size={14} />
+              </CtrlBtn>
               {showSubsInput && (
-                <div className="absolute bottom-full right-0 mb-2 panel px-3 py-2 w-64">
-                  <div className="font-mono text-[10px] uppercase tracking-cinema text-bone-300 mb-2">
-                    Load subtitles (.vtt)
-                  </div>
+                <div className="absolute bottom-full right-0 mb-2 card px-3 py-2 w-64 bg-surface shadow-pop">
+                  <div className="eyebrow mb-2">Load subtitles (.vtt)</div>
                   <input
                     type="file"
                     accept=".vtt"
                     onChange={(e) => handleSubtitleFile(e.target.files?.[0])}
-                    className="text-xs text-bone-100"
+                    className="text-[12px] text-fg"
                   />
                   {subtitleTrack && (
-                    <div className="mt-2 font-mono text-[10px] text-bone-300/70 truncate">
+                    <div className="mt-2 mono text-[10px] text-fg-3 truncate">
                       Loaded: {subtitleTrack}
                     </div>
                   )}
@@ -278,47 +328,28 @@ export default function VideoPlayer({
               )}
             </div>
 
-            <ControlButton onClick={enterFullscreen} aria-label="Fullscreen">
-              <FullscreenIcon />
-            </ControlButton>
+            <CtrlBtn onClick={enterFullscreen} aria-label="Fullscreen">
+              <Icon name="fullscreen" size={14} />
+            </CtrlBtn>
           </div>
         </div>
       </div>
-
-      {/* Lock badge for non-controllers */}
-      {!canControl && (
-        <div className="absolute top-3 right-3 font-mono text-[10px] uppercase tracking-cinema text-bone-300/80 bg-ink-900/70 border border-bone-300/20 px-2 py-1">
-          {isHost ? 'host' : 'spectator · host controls'}
-        </div>
-      )}
     </div>
   );
 }
 
-function ControlButton({ children, ...rest }) {
+function CtrlBtn({ children, disabled, accent, ...rest }) {
+  const base =
+    'inline-flex items-center justify-center rounded-full transition-colors';
+  const size = accent ? 'w-11 h-11' : 'w-9 h-9';
+  const palette = disabled
+    ? 'opacity-30 cursor-not-allowed bg-white/8 border border-white/10 text-white/80'
+    : accent
+    ? 'bg-accent text-white hover:brightness-110 border border-accent shadow-[0_8px_24px_-12px_rgba(124,124,245,0.85)]'
+    : 'bg-white/10 border border-white/16 text-white hover:bg-white/20';
   return (
-    <button
-      {...rest}
-      className={`w-9 h-9 flex items-center justify-center border border-bone-300/15 bg-ink-900/40 text-bone-100 hover:bg-ember-500 hover:text-ink-900 hover:border-ember-500 transition-colors disabled:opacity-30 disabled:hover:bg-ink-900/40 disabled:hover:text-bone-100 disabled:hover:border-bone-300/15 disabled:cursor-not-allowed`}
-    >
+    <button {...rest} disabled={disabled} className={`${base} ${size} ${palette}`}>
       {children}
     </button>
   );
 }
-
-// Tiny inline icons (keep SVG embedded to avoid icon library bloat)
-const PlayIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5v11l9-5.5z"/></svg>
-);
-const PauseIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="3" y="2" width="3" height="10"/><rect x="8" y="2" width="3" height="10"/></svg>
-);
-const SoundIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 5v4h2l3 2V3L4 5H2z"/><path d="M9.5 4a4 4 0 010 6"/></svg>
-);
-const MutedIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M2 5v4h2l3 2V3L4 5H2z"/><path d="M9 5l4 4M13 5l-4 4"/></svg>
-);
-const FullscreenIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg>
-);

@@ -4,6 +4,7 @@ Project.md
 node_modules/
 .pnpm-store/
 .claude/
+.playwright-mcp/
 # build artifacts
 dist/
 build/

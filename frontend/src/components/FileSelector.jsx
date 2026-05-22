@@ -1,14 +1,19 @@
 import { useRef, useState } from 'react';
+import { Icon } from './Icon.jsx';
 
-export default function FileSelector({ onPick }) {
+export default function FileSelector({ onPick, compact = false }) {
   const inputRef = useRef(null);
   const [dragOver, setDragOver] = useState(false);
 
   return (
     <div
-      className={`relative aspect-video w-full flex items-center justify-center transition-colors ${
-        dragOver ? 'bg-ember-500/5' : 'bg-ink-900/60'
-      }`}
+      className={`relative w-full h-full ${
+        compact ? 'aspect-video' : ''
+      } flex items-center justify-center transition-colors`}
+      style={{
+        background:
+          'radial-gradient(ellipse at center, #11151f 0%, #000 70%), repeating-linear-gradient(45deg, rgba(255,255,255,0.012) 0 8px, transparent 8px 16px)',
+      }}
       onDragOver={(e) => {
         e.preventDefault();
         setDragOver(true);
@@ -21,12 +26,6 @@ export default function FileSelector({ onPick }) {
         if (f) onPick(f);
       }}
     >
-      {/* corner brackets — film slate aesthetic */}
-      <Bracket pos="tl" />
-      <Bracket pos="tr" />
-      <Bracket pos="bl" />
-      <Bracket pos="br" />
-
       <input
         ref={inputRef}
         type="file"
@@ -38,53 +37,36 @@ export default function FileSelector({ onPick }) {
         }}
       />
 
-      <div className="text-center px-6 max-w-xl">
-        <div className="font-mono text-[10px] uppercase tracking-cinema text-bone-300/70 mb-3">
-          Load your local reel
-        </div>
-        <div className="font-display text-3xl text-bone-50 italic">
-          Pick a video file from your drive
-        </div>
-        <p className="mt-3 text-sm text-bone-200/70">
-          Nothing leaves your machine — the file is loaded directly into your
-          browser. Pick the same video as everyone else in the room.
-        </p>
-
-        <button onClick={() => inputRef.current?.click()} className="btn-primary mt-7">
-          Choose a file
-          <span aria-hidden>→</span>
+      <div className="text-center px-6 max-w-[520px] flex flex-col items-center gap-5">
+        <button
+          onClick={() => inputRef.current?.click()}
+          className={`group flex flex-col items-center gap-3 px-10 py-9 rounded-2xl transition-colors ${
+            dragOver
+              ? 'bg-white/[0.05] border-accent'
+              : 'bg-white/[0.02] border-white/[0.18] hover:border-accent hover:bg-white/[0.04]'
+          } border-2 border-dashed cursor-pointer`}
+        >
+          <span className="w-12 h-12 rounded-full bg-accent-soft border border-accent text-accent flex items-center justify-center">
+            <Icon name="upload" size={22} />
+          </span>
+          <span className="display text-[22px] text-white/95">
+            Drop your video here
+          </span>
+          <span className="text-[12px] text-white/55">
+            or click to choose · MP4, MOV, WebM
+          </span>
         </button>
 
+        <div className="mono text-[10px] tracking-cinema uppercase text-white/45">
+          Everyone in the room loads the same file
+        </div>
+
         {dragOver && (
-          <div className="mt-6 font-mono text-[10px] tracking-cinema uppercase text-ember-400">
+          <div className="mono text-[11px] tracking-cinema uppercase text-accent">
             Release to load
           </div>
         )}
       </div>
-
-      {/* film perforations */}
-      <div className="absolute top-0 left-0 bottom-0 w-3 reel-strip" />
-      <div className="absolute top-0 right-0 bottom-0 w-3 reel-strip" />
     </div>
-  );
-}
-
-function Bracket({ pos }) {
-  const map = {
-    tl: 'top-3 left-5',
-    tr: 'top-3 right-5 rotate-90',
-    bl: 'bottom-3 left-5 -rotate-90',
-    br: 'bottom-3 right-5 rotate-180',
-  };
-  return (
-    <span
-      aria-hidden
-      className={`absolute ${map[pos]} text-ember-500/80`}
-      style={{ width: 22, height: 22 }}
-    >
-      <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <path d="M2 8V2h6" />
-      </svg>
-    </span>
   );
 }

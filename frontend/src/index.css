@@ -2,15 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ---------- Base ---------- */
-
-:root {
+/* ─────────────────────────────────────────────────────────────
+   CoWatch — Midnight theme tokens (kept in CSS vars so we can
+   color-mix them and reference the exact same surfaces as the
+   reference design's prototype).
+   ───────────────────────────────────────────────────────────── */
+:root,
+[data-theme='midnight'] {
+  --bg: #07090f;
+  --bg-2: #0d1119;
+  --surface: #11151f;
+  --surface-2: #161b28;
+  --surface-3: #1c2230;
+  --line: rgba(180, 200, 255, 0.07);
+  --line-strong: rgba(180, 200, 255, 0.16);
+  --fg: #e8ecf5;
+  --fg-2: rgba(232, 236, 245, 0.7);
+  --fg-3: rgba(232, 236, 245, 0.4);
+  --accent: #7c7cf5;
+  --accent-soft: rgba(124, 124, 245, 0.16);
+  --accent-strong: #9a98ff;
+  --accent-fg: #ffffff;
+  --danger: #f06c8a;
+  --success: #5dd6a3;
+  --font-display: 'Instrument Serif', 'Bodoni Moda', Georgia, serif;
+  --font-body: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --shadow-lg: 0 30px 80px -20px rgba(0, 0, 0, 0.6),
+    0 1px 0 rgba(255, 255, 255, 0.04) inset;
   color-scheme: dark;
-  --ink-900: #0a0807;
-  --ink-800: #11100e;
-  --ember: #f59333;
-  --bone: #f4ede1;
-  --crimson: #e23c3c;
 }
 
 html,
@@ -19,140 +41,518 @@ body,
   height: 100%;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 body {
-  background-color: var(--ink-900);
-  background-image:
-    radial-gradient(1200px 600px at 80% -10%, rgba(245, 147, 51, 0.10), transparent 60%),
-    radial-gradient(900px 500px at -10% 110%, rgba(226, 60, 60, 0.06), transparent 60%),
-    repeating-linear-gradient(0deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 3px);
-  font-family: 'Geist', system-ui, sans-serif;
-  font-weight: 400;
+  margin: 0;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   letter-spacing: -0.005em;
 }
 
 ::selection {
-  background: rgba(245, 147, 51, 0.35);
-  color: var(--bone);
+  background: rgba(124, 124, 245, 0.35);
+  color: var(--fg);
 }
 
-/* ---------- Film grain overlay ---------- */
+button {
+  font-family: inherit;
+}
+
+input,
+textarea {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* ── Aurora background — subtle gradient layers seen behind ──
+   surfaces. Keeps the Midnight theme from feeling flat. */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(900px 480px at 8% -10%, rgba(124, 124, 245, 0.16), transparent 65%),
+    radial-gradient(700px 420px at 100% 8%, rgba(93, 214, 163, 0.08), transparent 70%),
+    radial-gradient(800px 600px at 50% 110%, rgba(124, 124, 245, 0.10), transparent 60%);
+  opacity: 0.85;
+}
 
 .grain::before {
   content: '';
-  position: absolute;
+  position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
-  opacity: 0.07;
+  z-index: 1;
+  opacity: 0.05;
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 1   0 0 0 0 1   0 0 0 0 1   0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 
-/* ---------- Hairline rule ---------- */
+/* ── Typography ─────────────────────────────────────────────── */
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+}
+.mono {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--fg-3);
+}
 
+/* ── Buttons ────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--fg);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.08s, color 0.15s, filter 0.15s;
+  font-family: var(--font-body);
+  white-space: nowrap;
+}
+.btn:active {
+  transform: scale(0.985);
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-weight: 600;
+  box-shadow: 0 12px 28px -16px rgba(124, 124, 245, 0.85);
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.btn-ghost {
+  border-color: var(--line-strong);
+  color: var(--fg);
+}
+.btn-ghost:hover {
+  background: var(--surface);
+}
+.btn-danger {
+  border-color: color-mix(in oklch, var(--danger) 40%, transparent);
+  color: var(--danger);
+}
+.btn-danger:hover {
+  background: color-mix(in oklch, var(--danger) 12%, transparent);
+}
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--fg-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-icon:hover {
+  background: var(--surface-2);
+  color: var(--fg);
+}
+
+/* ── Inputs ─────────────────────────────────────────────────── */
+.field-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-wrap label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+.input {
+  height: 48px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0 16px;
+  font-size: 15px;
+  color: var(--fg);
+  outline: none;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
+.input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(124, 124, 245, 0.12);
+}
+.input::placeholder {
+  color: var(--fg-3);
+}
+
+/* ── Card / surface ─────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.card-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+.card-hd .title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+.card-hd .meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fg-3);
+}
+
+/* ── Brand mark — concentric circle pattern, like the ref. ─── */
+.brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--accent), transparent 70%),
+    var(--fg);
+  position: relative;
+  flex-shrink: 0;
+}
+.brand-mark::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--bg);
+}
+.brand-mark::before {
+  content: '';
+  position: absolute;
+  inset: 11px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.brand-name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+.brand-name b {
+  font-weight: 400;
+}
+.brand-name i {
+  font-style: italic;
+  color: var(--fg-3);
+  margin-left: 4px;
+}
+
+/* ── Pills ──────────────────────────────────────────────────── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--fg-2);
+}
+.pill .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.pill.accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: color-mix(in oklch, var(--accent) 30%, transparent);
+}
+.pill.accent .dot {
+  background: var(--accent);
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+.pill.danger {
+  background: color-mix(in oklch, var(--danger) 14%, transparent);
+  color: var(--danger);
+  border-color: color-mix(in oklch, var(--danger) 30%, transparent);
+}
+.pill.danger .dot {
+  background: var(--danger);
+  animation: blink 1s infinite;
+}
+.pill.success {
+  background: color-mix(in oklch, var(--success) 14%, transparent);
+  color: var(--success);
+  border-color: color-mix(in oklch, var(--success) 30%, transparent);
+}
+.pill.success .dot {
+  background: var(--success);
+}
+
+/* ── Avatar palette (consistent across all instances) ──────── */
+.av {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  border-radius: 50%;
+  flex-shrink: 0;
+  user-select: none;
+}
+.av-0 { background: linear-gradient(135deg, #f5a524, #ef6b5a); }
+.av-1 { background: linear-gradient(135deg, #7c7cf5, #b56bd6); }
+.av-2 { background: linear-gradient(135deg, #5dd6a3, #4a9fb5); }
+.av-3 { background: linear-gradient(135deg, #f06c8a, #c25a7b); }
+.av-4 { background: linear-gradient(135deg, #e5b85d, #c98c3c); }
+.av-5 { background: linear-gradient(135deg, #6fb8d1, #5276c4); }
+
+/* ── Users-pill (stacked avatars) ──────────────────────────── */
+.users-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 14px 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+}
+.users-pill .stack {
+  display: flex;
+}
+.users-pill .stack .av {
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--surface);
+  margin-left: -8px;
+  font-size: 10px;
+}
+.users-pill .stack .av:first-child {
+  margin-left: 0;
+}
+.users-pill .count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--fg-2);
+}
+
+/* ── Scrollbars ─────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── Hairline ───────────────────────────────────────────────── */
 .hairline {
   background-image: linear-gradient(
     to right,
     transparent,
-    rgba(244, 237, 225, 0.18) 8%,
-    rgba(244, 237, 225, 0.32) 50%,
-    rgba(244, 237, 225, 0.18) 92%,
+    rgba(180, 200, 255, 0.16) 8%,
+    rgba(180, 200, 255, 0.28) 50%,
+    rgba(180, 200, 255, 0.16) 92%,
     transparent
   );
   height: 1px;
 }
 
-/* ---------- Reel sprocket holes (decorative side strip) ---------- */
-
-.reel-strip {
-  background:
-    radial-gradient(circle at 50% 12px, var(--ink-900) 4px, transparent 5px) 0 0 / 18px 36px repeat-y,
-    linear-gradient(180deg, rgba(245,147,51,0.18), rgba(245,147,51,0.04));
+/* ── Animations ─────────────────────────────────────────────── */
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes rise {
+  0% {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-in {
+  animation: fade-in 0.35s ease-out both;
 }
 
-/* ---------- Form fields ---------- */
-
-.field {
-  @apply w-full bg-transparent border-b border-bone-300/30 text-bone-50 placeholder-bone-300/40
-         px-0 py-3 font-mono text-sm tracking-wide outline-none transition-colors;
+/* ── Decorative orb (used on Home left side) ───────────────── */
+.orb {
+  position: relative;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    var(--accent),
+    transparent 60%
+  );
 }
-.field:focus {
-  @apply border-ember-500;
-}
-.field:disabled {
-  @apply opacity-40 cursor-not-allowed;
-}
-
-.label {
-  @apply text-[10px] uppercase tracking-cinema text-bone-300 font-mono;
-}
-
-/* ---------- Buttons ---------- */
-
-.btn {
-  @apply inline-flex items-center gap-2 font-mono uppercase tracking-cinema text-[11px]
-         px-4 py-2.5 border transition-all duration-200 select-none;
-}
-.btn-primary {
-  @apply btn bg-ember-500 text-ink-900 border-ember-500 hover:bg-ember-400 hover:border-ember-400
-         shadow-glow-amber;
-}
-.btn-primary:active {
-  transform: translateY(1px);
-}
-.btn-ghost {
-  @apply btn bg-transparent text-bone-100 border-bone-300/30 hover:border-bone-100 hover:bg-bone-50/5;
-}
-.btn-danger {
-  @apply btn bg-transparent text-crimson-400 border-crimson-400/40 hover:bg-crimson-400/10;
-}
-.btn:disabled {
-  @apply opacity-40 cursor-not-allowed;
-}
-
-/* ---------- Card / panel ---------- */
-
-.panel {
-  @apply relative bg-ink-800/70 border border-bone-300/10 backdrop-blur-sm;
-  background-image: linear-gradient(180deg, rgba(255,255,255,0.02), transparent 30%);
-}
-
-/* ---------- Scrollbars ---------- */
-
-.thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
-.thin-scroll::-webkit-scrollbar-track { background: transparent; }
-.thin-scroll::-webkit-scrollbar-thumb { background: rgba(244,237,225,0.12); border-radius: 999px; }
-.thin-scroll::-webkit-scrollbar-thumb:hover { background: rgba(244,237,225,0.22); }
-
-/* ---------- Reel countdown ---------- */
-
-@keyframes reelSpin {
-  to { transform: rotate(360deg); }
-}
-.reel-spin { animation: reelSpin 4s linear infinite; }
-
-/* ---------- Marker tick ---------- */
-
-.tick::before {
+.orb::after {
   content: '';
-  display: inline-block;
-  width: 6px; height: 6px;
-  margin-right: 8px;
-  background: currentColor;
-  transform: rotate(45deg);
-  vertical-align: middle;
+  position: absolute;
+  inset: -40px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+}
+.orb::before {
+  content: '';
+  position: absolute;
+  inset: -100px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
 }
 
-/* ---------- Native video controls cleanup ---------- */
+/* ── Decorative preview cards used on Landing ──────────────── */
+.preview-stack {
+  position: relative;
+  height: 360px;
+  perspective: 1400px;
+}
+.preview-card {
+  position: absolute;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+.preview-card.p1 {
+  top: 0;
+  left: 0;
+  right: 80px;
+  height: 230px;
+  transform: rotate(-3deg);
+}
+.preview-card.p2 {
+  bottom: 0;
+  left: 80px;
+  right: 0;
+  height: 200px;
+  transform: rotate(2deg);
+}
+.preview-thumb {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, var(--accent-soft), transparent),
+    repeating-linear-gradient(
+      45deg,
+      var(--surface-2) 0 8px,
+      transparent 8px 16px
+    );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.preview-thumb::after {
+  content: '';
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.92;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+.preview-thumb svg {
+  position: relative;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  fill: var(--accent-fg);
+}
 
-video::-webkit-media-controls-enclosure { display: none !important; }
-video::-webkit-media-controls { display: none !important; }
-video { background: #000; }
+/* ── Native video controls hidden (we render custom UI) ─── */
+video::-webkit-media-controls-enclosure {
+  display: none !important;
+}
+video::-webkit-media-controls {
+  display: none !important;
+}
+video {
+  background: #000;
+  /* Force the video onto its own compositor layer. Without this, the
+     viewport-fixed `.grain::before` (mix-blend-mode: overlay) triggers a
+     Chromium compositor path that renders hardware-accelerated <video>
+     as a black frame even while playback continues. */
+  will-change: transform;
+}
 
-/* ---------- Reduce motion ---------- */
-
+/* ── Reduce motion ─────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
