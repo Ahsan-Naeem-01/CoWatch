@@ -1,0 +1,26 @@
+Project.md
+
+# dependencies
+node_modules/
+.pnpm-store/
+.claude/
+# build artifacts
+dist/
+build/
+.vite/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/settings.json
