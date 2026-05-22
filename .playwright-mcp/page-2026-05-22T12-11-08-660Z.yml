@@ -1,0 +1,53 @@
+- main [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e11]: CoWatch · sync-relay
+    - generic [ref=e12]:
+      - generic [ref=e13]: ● SYNC LINK ESTABLISHED
+      - generic [ref=e14]: 05/22/2026
+  - generic [ref=e15]:
+    - generic [ref=e16]:
+      - generic [ref=e19]: REEL ONE · TAKE 15 · LIVE
+      - heading "CoWatch A projector for the whole room." [level=1] [ref=e59]:
+        - generic [ref=e21]: CoWatch
+        - generic [ref=e22]: A projector for the whole room.
+      - paragraph [ref=e23]: Load the same film from your own drive. We never see it. We just keep everyone’s playhead within a few hundred milliseconds of each other — a tiny conductor sitting between your browsers.
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - generic [ref=e26]: "1"
+          - generic [ref=e27]: Rooms open
+        - generic [ref=e28]:
+          - generic [ref=e29]: "1"
+          - generic [ref=e30]: Seats filled
+        - generic [ref=e31]:
+          - generic [ref=e32]: ONLINE
+          - generic [ref=e33]: Server
+      - generic [ref=e35]:
+        - generic [ref=e36]: No video ever touches our server
+        - generic [ref=e37]: ·
+        - generic [ref=e38]: Event-driven playback sync
+        - generic [ref=e39]: ·
+        - generic [ref=e40]: WebSocket relay only
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - button "Open a new room" [ref=e44] [cursor=pointer]
+        - button "Join an existing room" [active] [ref=e46] [cursor=pointer]
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - text: Your name
+          - textbox "Your name" [ref=e49]:
+            - /placeholder: e.g. Hitchcock
+            - text: Host
+        - generic [ref=e50]:
+          - text: Existing room title
+          - textbox "Existing room title" [ref=e60]:
+            - /placeholder: e.g. Tuesday Night Vertigo
+        - generic [ref=e52]:
+          - text: Room password
+          - textbox "Room password" [ref=e53]:
+            - /placeholder: Shared with your viewers
+        - generic [ref=e54]:
+          - generic [ref=e55]: READY · ENCRYPTED HANDSHAKE
+          - button "Take a seat" [ref=e61] [cursor=pointer]:
+            - text: Take a seat
+            - generic [ref=e57]: →
+      - paragraph [ref=e58]: ↳ You will load your own copy of the film. Hashes are compared.

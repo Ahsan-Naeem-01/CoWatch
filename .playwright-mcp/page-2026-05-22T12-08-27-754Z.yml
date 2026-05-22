@@ -1,0 +1,52 @@
+- main [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e11]: CoWatch · sync-relay
+    - generic [ref=e12]:
+      - generic [ref=e13]: ● NO LINK
+      - generic [ref=e14]: 05/22/2026
+  - generic [ref=e15]:
+    - generic [ref=e16]:
+      - generic [ref=e19]: REEL ONE · TAKE 16 · LIVE
+      - heading "CoWatch Press play together." [level=1] [ref=e20]:
+        - generic [ref=e21]: CoWatch
+        - generic [ref=e22]: Press play together.
+      - paragraph [ref=e23]: Load the same film from your own drive. We never see it. We just keep everyone’s playhead within a few hundred milliseconds of each other — a tiny conductor sitting between your browsers.
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - generic [ref=e26]: "0"
+          - generic [ref=e27]: Rooms open
+        - generic [ref=e28]:
+          - generic [ref=e29]: "0"
+          - generic [ref=e30]: Seats filled
+        - generic [ref=e31]:
+          - generic [ref=e32]: — —
+          - generic [ref=e33]: Server
+      - generic [ref=e35]:
+        - generic [ref=e36]: No video ever touches our server
+        - generic [ref=e37]: ·
+        - generic [ref=e38]: Event-driven playback sync
+        - generic [ref=e39]: ·
+        - generic [ref=e40]: WebSocket relay only
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - button "Open a new room" [ref=e44] [cursor=pointer]
+        - button "Join an existing room" [ref=e46] [cursor=pointer]
+      - generic [ref=e47]:
+        - generic [ref=e48]:
+          - text: Your name
+          - textbox "Your name" [ref=e49]:
+            - /placeholder: e.g. Hitchcock
+        - generic [ref=e50]:
+          - text: New room title
+          - textbox "New room title" [ref=e51]:
+            - /placeholder: e.g. Tuesday Night Vertigo
+        - generic [ref=e52]:
+          - text: Room password
+          - textbox "Room password" [ref=e53]:
+            - /placeholder: Shared with your viewers
+        - generic [ref=e54]:
+          - generic [ref=e55]: WAITING FOR SERVER…
+          - button "Open the room" [disabled] [ref=e56]:
+            - text: Open the room
+            - generic [ref=e57]: →
+      - paragraph [ref=e58]: ↳ You become the host. Only you can play, pause, or seek.

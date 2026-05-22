@@ -1,0 +1,58 @@
+- main [ref=e60]:
+  - generic [ref=e62]:
+    - generic [ref=e63]:
+      - generic [ref=e64]:
+        - generic [ref=e66]: REC
+        - generic [ref=e67]: ·
+        - generic [ref=e68]: SCREENING IN PROGRESS
+        - generic [ref=e69]: ·
+        - generic [ref=e70]: 00:01:18
+      - heading "TestRoom" [level=1] [ref=e71]
+      - generic [ref=e72]:
+        - generic [ref=e73]: ● LINK STABLE
+        - generic [ref=e74]: · 1 viewer
+        - generic [ref=e75]: ·
+        - generic [ref=e76]: Host-only controls
+    - generic [ref=e77]:
+      - button "Allow all to control" [ref=e78] [cursor=pointer]
+      - button "Copy invite link" [ref=e79] [cursor=pointer]
+      - button "Leave room" [ref=e80] [cursor=pointer]
+  - generic [ref=e82]:
+    - generic [ref=e83]:
+      - generic [ref=e129]:
+        - generic "Scrub timeline" [ref=e130] [cursor=pointer]
+        - generic [ref=e132]:
+          - generic [ref=e133]:
+            - button "Play" [ref=e134] [cursor=pointer]:
+              - img [ref=e135]
+            - button "Mute" [ref=e137] [cursor=pointer]:
+              - img [ref=e138]
+            - slider "Volume" [ref=e141]: "1"
+            - generic [ref=e142]: 00:00/23:42
+          - generic [ref=e143]:
+            - generic [ref=e144]: video1.mp4
+            - button "Playback speed" [ref=e146] [cursor=pointer]:
+              - generic [ref=e147]: 1x
+            - button "Subtitles" [ref=e149] [cursor=pointer]:
+              - generic [ref=e150]: CC
+            - button "Fullscreen" [ref=e151] [cursor=pointer]:
+              - img [ref=e152]
+      - generic [ref=e106]:
+        - generic [ref=e109]: LINK STABLE
+        - button "Change reel" [ref=e154] [cursor=pointer]
+    - complementary [ref=e110]:
+      - generic [ref=e111]:
+        - button "Viewers" [ref=e112] [cursor=pointer]
+        - button "Chat" [ref=e113] [cursor=pointer]
+        - button "Activity" [ref=e114] [cursor=pointer]
+      - generic [ref=e116]:
+        - generic [ref=e117]:
+          - generic [ref=e118]: 1 in the room
+          - generic [ref=e119]: host present
+        - list [ref=e120]:
+          - listitem [ref=e121]:
+            - generic [ref=e122]: H
+            - generic [ref=e123]:
+              - button "Host" [ref=e124]
+              - generic [ref=e125]: HOST
+            - generic [ref=e126]: HOST

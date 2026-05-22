@@ -85,7 +85,11 @@ export default function Room() {
         body: hostId === socket.id ? 'You are now the host.' : 'A new host has been promoted.',
       });
     };
-    const onControlToggled = ({ allowAllControl }) =>
+    const onControlToggled = ({ allowAllControl }) => {
+      // Propagate the new permission into local room state so every viewer's
+      // `canControl` flips immediately — without it, peers stayed locked until
+      // an unrelated room-state push (or a manual reload) arrived.
+      setRoom((r) => (r ? { ...r, allowAllControl } : r));
       pushToast({
         kind: 'info',
         title: allowAllControl ? 'Open seating' : 'Host-only controls',
@@ -93,6 +97,7 @@ export default function Room() {
           ? 'Anyone can now play, pause, or seek.'
           : 'Only the host can control playback.',
       });
+    };
     const onActivity = (activity) =>
       setRoom((r) => (r ? { ...r, activity } : r));
     const onError = (msg) =>

@@ -1,0 +1,54 @@
+- main [ref=e63]:
+  - generic [ref=e65]:
+    - generic [ref=e66]:
+      - generic [ref=e67]:
+        - generic [ref=e69]: REC
+        - generic [ref=e70]: ·
+        - generic [ref=e71]: SCREENING IN PROGRESS
+        - generic [ref=e72]: ·
+        - generic [ref=e73]: 00:02:04
+      - heading "TestRoom" [level=1] [ref=e74]
+      - generic [ref=e75]:
+        - generic [ref=e76]: ● LINK STABLE
+        - generic [ref=e77]: · 2 viewers
+        - generic [ref=e78]: ·
+        - generic [ref=e79]: Host-only controls
+    - generic [ref=e80]:
+      - button "Copy invite link" [ref=e81] [cursor=pointer]
+      - button "Leave room" [ref=e82] [cursor=pointer]
+  - generic [ref=e84]:
+    - generic [ref=e85]:
+      - generic [ref=e87]:
+        - img [ref=e89]
+        - img [ref=e92]
+        - img [ref=e95]
+        - img [ref=e98]
+        - generic [ref=e100]:
+          - generic [ref=e101]: Load your local reel
+          - generic [ref=e102]: Pick a video file from your drive
+          - paragraph [ref=e103]: Nothing leaves your machine — the file is loaded directly into your browser. Pick the same video as everyone else in the room.
+          - button "Choose a file" [ref=e104] [cursor=pointer]:
+            - text: Choose a file
+            - generic [ref=e105]: →
+      - generic [ref=e111]: LINK STABLE
+    - complementary [ref=e112]:
+      - generic [ref=e113]:
+        - button "Viewers" [ref=e114] [cursor=pointer]
+        - button "Chat" [ref=e115] [cursor=pointer]
+        - button "Activity" [ref=e116] [cursor=pointer]
+      - generic [ref=e118]:
+        - generic [ref=e119]:
+          - generic [ref=e120]: 2 in the room
+          - generic [ref=e121]: host present
+        - list [ref=e122]:
+          - listitem [ref=e123]:
+            - generic [ref=e124]: H
+            - generic [ref=e125]:
+              - button "Host" [ref=e126]
+              - generic [ref=e127]: HOST
+            - generic [ref=e128]: HOST
+          - listitem [ref=e129]:
+            - generic [ref=e130]: J
+            - generic [ref=e131]:
+              - button "Joiner" [ref=e132]
+              - generic [ref=e133]: YOU

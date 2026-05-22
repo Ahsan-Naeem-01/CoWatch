@@ -1,0 +1,70 @@
+- generic [ref=e3]:
+  - main [ref=e60]:
+    - generic [ref=e62]:
+      - generic [ref=e63]:
+        - generic [ref=e64]:
+          - generic [ref=e66]: REC
+          - generic [ref=e67]: ·
+          - generic [ref=e68]: SCREENING IN PROGRESS
+          - generic [ref=e69]: ·
+          - generic [ref=e70]: 00:08:53
+        - heading "TestRoom" [level=1] [ref=e71]
+        - generic [ref=e72]:
+          - generic [ref=e73]: ● LINK STABLE
+          - generic [ref=e74]: · 2 viewers
+          - generic [ref=e75]: ·
+          - generic [ref=e76]: Open seating · all may control
+      - generic [ref=e77]:
+        - button "Restrict to host" [active] [ref=e180] [cursor=pointer]
+        - button "Copy invite link" [ref=e79] [cursor=pointer]
+        - button "Leave room" [ref=e80] [cursor=pointer]
+    - generic [ref=e82]:
+      - generic [ref=e83]:
+        - generic [ref=e129]:
+          - generic "Scrub timeline" [ref=e130] [cursor=pointer]
+          - generic [ref=e132]:
+            - generic [ref=e133]:
+              - button "Pause" [ref=e169] [cursor=pointer]:
+                - img [ref=e170]
+              - button "Mute" [ref=e137] [cursor=pointer]:
+                - img [ref=e138]
+              - slider "Volume" [ref=e141]: "1"
+              - generic [ref=e142]: 16:23/23:42
+            - generic [ref=e143]:
+              - generic [ref=e144]: video1.mp4
+              - button "Playback speed" [ref=e146] [cursor=pointer]:
+                - generic [ref=e147]: 1x
+              - button "Subtitles" [ref=e149] [cursor=pointer]:
+                - generic [ref=e150]: CC
+              - button "Fullscreen" [ref=e151] [cursor=pointer]:
+                - img [ref=e152]
+        - generic [ref=e106]:
+          - generic [ref=e109]: LINK STABLE
+          - button "Change reel" [ref=e154] [cursor=pointer]
+      - complementary [ref=e110]:
+        - generic [ref=e111]:
+          - button "Viewers" [ref=e112] [cursor=pointer]
+          - button "Chat" [ref=e113] [cursor=pointer]
+          - button "Activity" [ref=e114] [cursor=pointer]
+        - generic [ref=e116]:
+          - generic [ref=e117]:
+            - generic [ref=e118]: 2 in the room
+            - generic [ref=e119]: host present
+          - list [ref=e120]:
+            - listitem [ref=e121]:
+              - generic [ref=e122]: H
+              - generic [ref=e123]:
+                - button "Host" [ref=e124]
+                - generic [ref=e125]: HOST
+              - generic [ref=e126]: HOST
+            - listitem [ref=e155]:
+              - generic [ref=e156]: J
+              - generic [ref=e157]:
+                - button "Joiner" [ref=e158]
+                - generic [ref=e159]: VIEWER
+  - button "info dismiss Open seating Anyone can now play, pause, or seek." [ref=e181] [cursor=pointer]:
+    - generic [ref=e182]:
+      - generic [ref=e183]: info
+      - generic [ref=e184]: dismiss
+    - generic [ref=e185]: Open seating
+    - generic [ref=e186]: Anyone can now play, pause, or seek.
