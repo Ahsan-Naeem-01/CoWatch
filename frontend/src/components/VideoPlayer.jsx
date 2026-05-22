@@ -31,7 +31,10 @@ export default function VideoPlayer({
   const [showSubsInput, setShowSubsInput] = useState(false);
   const [subtitleTrack, setSubtitleTrack] = useState(null);
   const [hovering, setHovering] = useState(false);
+  const [scrubHover, setScrubHover] = useState(null);
   const containerRef = useRef(null);
+  const scrubRef = useRef(null);
+  const clickTimerRef = useRef(null);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -80,6 +83,15 @@ export default function VideoPlayer({
     v.currentTime = Math.max(0, Math.min(duration, pct * duration));
   };
 
+  const onScrubHover = (e) => {
+    if (!duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    setScrubHover({ pct: ratio * 100, time: ratio * duration });
+  };
+
+  const onScrubLeave = () => setScrubHover(null);
+
   const onChangeRate = (r) => {
     const v = videoRef.current;
     if (!v || !canControl) return;
@@ -99,6 +111,23 @@ export default function VideoPlayer({
     if (document.fullscreenElement) document.exitFullscreen();
     else el.requestFullscreen().catch(() => {});
   };
+
+  const onSurfaceClick = () => {
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      enterFullscreen();
+      return;
+    }
+    clickTimerRef.current = setTimeout(() => {
+      clickTimerRef.current = null;
+      togglePlay();
+    }, 240);
+  };
+
+  useEffect(() => () => {
+    if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+  }, []);
 
   const handleSubtitleFile = (file) => {
     if (!file || !videoRef.current) return;
@@ -141,6 +170,16 @@ export default function VideoPlayer({
         controls={false}
         preload="metadata"
       />
+
+      {/* Click-to-toggle / double-click-fullscreen overlay */}
+      {!autoplayBlocked && (
+        <button
+          type="button"
+          onClick={onSurfaceClick}
+          aria-label={playing ? 'Pause' : 'Play'}
+          className="absolute inset-0 z-0 bg-transparent cursor-pointer"
+        />
+      )}
 
       {/* Autoplay blocked overlay */}
       {autoplayBlocked && (
@@ -189,7 +228,7 @@ export default function VideoPlayer({
       {/* control bar */}
       <div
         className={`absolute left-0 right-0 bottom-0 px-4 pt-12 pb-3 z-10 transition-opacity duration-200 ${
-          hovering || !playing ? 'opacity-100' : 'opacity-0'
+          hovering || !playing ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         style={{
           background:
@@ -198,20 +237,37 @@ export default function VideoPlayer({
       >
         {/* Scrubber */}
         <div
+          ref={scrubRef}
           onClick={onScrub}
-          className={`relative h-1 w-full bg-white/16 rounded-full ${
+          onMouseMove={onScrubHover}
+          onMouseLeave={onScrubLeave}
+          className={`relative h-1.5 w-full bg-white/35 rounded-full group/scrub ${
             canControl ? 'cursor-pointer' : 'cursor-not-allowed'
           }`}
           aria-label="Scrub timeline"
         >
+          {scrubHover && (
+            <div
+              className="absolute inset-y-0 bg-white/20 rounded-full pointer-events-none"
+              style={{ left: `${pct}%`, width: `${Math.max(0, scrubHover.pct - pct)}%` }}
+            />
+          )}
           <div
-            className="absolute inset-y-0 left-0 bg-accent rounded-full"
+            className="absolute inset-y-0 left-0 bg-accent rounded-full pointer-events-none"
             style={{ width: `${pct}%` }}
           />
           <div
-            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 -ml-1.5 rounded-full bg-white shadow-[0_0_0_4px_rgba(124,124,245,0.45)]"
+            className="absolute top-1/2 -translate-y-1/2 w-3 h-3 -ml-1.5 rounded-full bg-white shadow-[0_0_0_4px_rgba(124,124,245,0.45)] pointer-events-none"
             style={{ left: `${pct}%` }}
           />
+          {scrubHover && (
+            <div
+              className="absolute bottom-full mb-2 -translate-x-1/2 pointer-events-none px-2 py-0.5 rounded bg-black/85 border border-white/10 mono text-[11px] text-white tabular-nums whitespace-nowrap"
+              style={{ left: `${scrubHover.pct}%` }}
+            >
+              {formatTime(scrubHover.time)}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center justify-between mt-3 text-white gap-3 flex-wrap">
