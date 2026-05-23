@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatTime } from '../utils/formatTime.js';
 import { Icon } from './Icon.jsx';
+import {
+  ReactionLauncher,
+  ReactionOverlay,
+} from './EmojiReactions.jsx';
 
 /**
  * Custom HTML5 video player with the Midnight theme. Native controls are
@@ -21,6 +25,9 @@ export default function VideoPlayer({
   onAutoplayBlocked,
   autoplayBlocked,
   onResolveAutoplay,
+  reactions = [],
+  onSendReaction,
+  onExpireReaction,
 }) {
   const [playing, setPlaying] = useState(roomPlayback?.isPlaying || false);
   const [time, setTime] = useState(roomPlayback?.currentTime || 0);
@@ -410,6 +417,21 @@ export default function VideoPlayer({
           </div>
         </div>
       </div>
+
+      {/* Right-edge emoji launcher — vertically centered pull-tab + panel.
+          `visible` follows the same idle-hide rule as the control bar so
+          the tab doesn't clutter the picture during quiet moments. */}
+      {onSendReaction && (
+        <ReactionLauncher
+          onPick={onSendReaction}
+          visible={showControls}
+        />
+      )}
+
+      {/* Floating reaction stream — sits above the video but below the
+          control bar's hover targets. pointer-events-none on the wrapper
+          guarantees it never blocks playback clicks. */}
+      <ReactionOverlay reactions={reactions} onExpire={onExpireReaction} />
     </div>
   );
 }

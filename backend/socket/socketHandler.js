@@ -4,19 +4,25 @@
  *   Inbound (client -> server):
  *     create-room, join-room, leave-room
  *     play, pause, seek, playback-rate, sync-state
- *     chat-message, toggle-control, rename
+ *     chat-message, toggle-control, rename, reaction
  *
  *   Outbound (server -> client / room):
  *     room-state
  *     remote-play, remote-pause, remote-seek, remote-rate
  *     user-connected, user-disconnected, host-change, control-toggled
- *     chat-message, activity, error-message
+ *     chat-message, activity, error-message, reaction
  *
  * Sync model: event-driven. Peers stay aligned via play/pause/seek/rate
  * broadcasts. There is no periodic heartbeat or drift correction — late
  * joiners get the right position because `projectRoom` projects the playhead
  * forward in time at read time (see controllers/roomController.js).
  */
+
+// Whitelist of reaction emojis the server will rebroadcast. Anything else is
+// dropped — keeps the overlay legible and prevents arbitrary unicode spam.
+const ALLOWED_REACTIONS = new Set(['❤️', '😂', '😮', '😢', '🔥', '👏', '👍', '🎉']);
+const REACTION_WINDOW_MS = 1_000;
+const REACTION_MAX_PER_WINDOW = 5;
 
 import { RoomController, projectRoom } from '../controllers/roomController.js';
 import { roomStore } from '../rooms/roomStore.js';
@@ -31,6 +37,7 @@ export function registerSocketHandlers(io) {
     // Per-socket session state.
     socket.data.roomName = null;
     socket.data.userName = null;
+    socket.data._reactions = [];
 
     const isHost = () => {
       const room = roomStore.get(socket.data.roomName);
@@ -213,6 +220,37 @@ export function registerSocketHandlers(io) {
           at: Date.now(),
         };
         io.to(room.key).emit('chat-message', message);
+      })
+    );
+
+    // ---------- Reactions ----------
+    //
+    // Floating-emoji reactions piggyback on the chat permission model: anyone
+    // in the room can send. A separate per-socket ring throttles the stream
+    // tighter than the global limiter (5/sec) so a single user can't flood the
+    // overlay even within their broader event budget.
+
+    socket.on(
+      'reaction',
+      guard(({ emoji } = {}) => {
+        if (typeof emoji !== 'string' || !ALLOWED_REACTIONS.has(emoji)) return;
+        const room = roomStore.get(socket.data.roomName);
+        if (!room) return;
+
+        const now = Date.now();
+        const ring = socket.data._reactions;
+        while (ring.length && now - ring[0] > REACTION_WINDOW_MS) ring.shift();
+        if (ring.length >= REACTION_MAX_PER_WINDOW) return;
+        ring.push(now);
+
+        // Don't echo to the sender — they animate their own reaction locally
+        // the moment they tap, so playback feels instant even on lossy links.
+        socket.to(room.key).emit('reaction', {
+          id: `${now}-${Math.random().toString(36).slice(2, 7)}`,
+          emoji,
+          userId: socket.id,
+          at: now,
+        });
       })
     );
 

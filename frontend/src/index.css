@@ -445,6 +445,63 @@ textarea {
   animation: fade-in 0.35s ease-out both;
 }
 
+/* ── Noto Color Emoji — Android-style emoji font, scoped to the
+   reaction picker + overlay so chat/UI stay on system emoji. The
+   fallback chain hands off to system emoji on Safari (which forces
+   its native set for COLR fonts) and as a final guard. */
+.emoji-noto {
+  font-family: 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji',
+    'Segoe UI Symbol', sans-serif;
+  font-variant-emoji: emoji;
+}
+
+/* ── Reaction overlay — Insta-Live style emojis burst from random
+   points across the bottom of the video. Each instance gets its own
+   CSS vars (--x horizontal drift, --rot final rotation) so a single
+   tap produces confetti-like motion instead of a uniform column.
+
+   We animate `top` from 100% to -10% so the emojis rise the full
+   height of the overlay regardless of video aspect ratio. */
+@keyframes reaction-float {
+  0% {
+    top: 100%;
+    transform: translate(-50%, 0) scale(0.4) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    transform: translate(-50%, 0) scale(1.15) rotate(calc(var(--rot, 0deg) * 0.3));
+    opacity: 1;
+  }
+  70% {
+    transform: translate(calc(-50% + var(--x, 0px) * 0.6), 0) scale(1) rotate(calc(var(--rot, 0deg) * 0.7));
+    opacity: 1;
+  }
+  100% {
+    top: -10%;
+    transform: translate(calc(-50% + var(--x, 0px)), 0) scale(0.85) rotate(var(--rot, 0deg));
+    opacity: 0;
+  }
+}
+.reaction-float {
+  animation: reaction-float 2.8s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  will-change: top, transform, opacity;
+}
+
+@keyframes reaction-panel-enter {
+  0% {
+    opacity: 0;
+    transform: translateX(8px) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+.reaction-panel-enter {
+  animation: reaction-panel-enter 0.18s ease-out both;
+  transform-origin: right center;
+}
+
 /* ── Decorative orb (used on Home left side) ───────────────── */
 .orb {
   position: relative;

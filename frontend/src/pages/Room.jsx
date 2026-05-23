@@ -9,6 +9,7 @@ import UsersList from '../components/UsersList.jsx';
 import ChatPanel from '../components/ChatPanel.jsx';
 import ActivityLog from '../components/ActivityLog.jsx';
 import RoomHeader from '../components/RoomHeader.jsx';
+import { makeReactionBurst } from '../components/EmojiReactions.jsx';
 
 export default function Room() {
   const { name: encodedName } = useParams();
@@ -26,6 +27,7 @@ export default function Room() {
   const [file, setFile] = useState(null);
   const [fileObjectUrl, setFileObjectUrl] = useState(null);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
+  const [reactions, setReactions] = useState([]);
 
   const videoRef = useRef(null);
   const passwordRef = useRef(location.state?.password || '');
@@ -127,6 +129,16 @@ export default function Room() {
       patchPlayback({ currentTime });
     const onRemoteRateState = ({ playbackRate }) =>
       patchPlayback({ playbackRate });
+    const onReaction = ({ emoji }) => {
+      if (!emoji) return;
+      // Each tap spawns a burst; cap concurrent floats so a flood (or many
+      // simultaneous senders) can't pile hundreds of emojis on the overlay.
+      setReactions((prev) => {
+        const burst = makeReactionBurst(emoji);
+        const combined = [...prev, ...burst];
+        return combined.length > 120 ? combined.slice(-120) : combined;
+      });
+    };
 
     socket.on('room-state', onRoomState);
     socket.on('chat-message', onChat);
@@ -140,6 +152,7 @@ export default function Room() {
     socket.on('remote-pause', onRemotePauseState);
     socket.on('remote-seek', onRemoteSeekState);
     socket.on('remote-rate', onRemoteRateState);
+    socket.on('reaction', onReaction);
 
     return () => {
       socket.off('room-state', onRoomState);
@@ -154,6 +167,7 @@ export default function Room() {
       socket.off('remote-pause', onRemotePauseState);
       socket.off('remote-seek', onRemoteSeekState);
       socket.off('remote-rate', onRemoteRateState);
+      socket.off('reaction', onReaction);
     };
   }, [socket, pushToast]);
 
@@ -215,6 +229,25 @@ export default function Room() {
     },
     [socket]
   );
+
+  // Spawn the burst locally first so the sender sees instant feedback even
+  // if the network round-trip is slow; the server intentionally doesn't echo
+  // back to the sender (see backend/socket/socketHandler.js).
+  const sendReaction = useCallback(
+    (emoji) => {
+      setReactions((prev) => {
+        const burst = makeReactionBurst(emoji);
+        const combined = [...prev, ...burst];
+        return combined.length > 120 ? combined.slice(-120) : combined;
+      });
+      socket.emit('reaction', { emoji });
+    },
+    [socket]
+  );
+
+  const expireReaction = useCallback((id) => {
+    setReactions((prev) => prev.filter((r) => r.id !== id));
+  }, []);
 
   const toggleAllowAll = useCallback(() => {
     if (!isHost || !room) return;
@@ -297,6 +330,9 @@ export default function Room() {
                 onAutoplayBlocked={() => setAutoplayBlocked(true)}
                 autoplayBlocked={autoplayBlocked}
                 onResolveAutoplay={() => setAutoplayBlocked(false)}
+                reactions={reactions}
+                onSendReaction={sendReaction}
+                onExpireReaction={expireReaction}
               />
             )}
           </div>
