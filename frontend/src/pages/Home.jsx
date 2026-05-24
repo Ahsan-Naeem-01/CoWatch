@@ -40,7 +40,12 @@ export default function Home() {
     let stopped = false;
     const refresh = async () => {
       try {
-        const res = await fetch(url);
+        // ngrok-skip-browser-warning bypasses the *.ngrok-free.app interstitial
+        // page so the fetch gets real JSON instead of the warning HTML. Safe
+        // to send to non-ngrok backends — they just ignore the unknown header.
+        const res = await fetch(url, {
+          headers: { 'ngrok-skip-browser-warning': 'true' },
+        });
         if (!res.ok) return;
         const json = await res.json();
         if (!stopped) setStats(json);

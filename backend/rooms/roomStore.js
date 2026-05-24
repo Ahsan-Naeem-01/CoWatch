@@ -12,9 +12,29 @@
  */
 
 const rooms = new Map();
+const emptyTimers = new Map(); // roomKey -> setTimeout handle
+const EMPTY_ROOM_GRACE_MS = 60_000; // keep empty rooms around for 60s so reconnects can find them
 
 function normalizeName(name) {
   return String(name || '').trim().toLowerCase();
+}
+
+function cancelDestroy(roomKey) {
+  const t = emptyTimers.get(roomKey);
+  if (t) {
+    clearTimeout(t);
+    emptyTimers.delete(roomKey);
+  }
+}
+
+function scheduleDestroy(roomKey) {
+  cancelDestroy(roomKey);
+  const t = setTimeout(() => {
+    const room = rooms.get(roomKey);
+    if (room && room.users.size === 0) rooms.delete(roomKey);
+    emptyTimers.delete(roomKey);
+  }, EMPTY_ROOM_GRACE_MS);
+  emptyTimers.set(roomKey, t);
 }
 
 function pushActivity(room, kind, message) {
@@ -59,6 +79,7 @@ export const roomStore = {
   addUser: (name, user) => {
     const room = rooms.get(normalizeName(name));
     if (!room) return null;
+    cancelDestroy(room.key); // someone came back during the grace window
     room.users.set(user.id, user);
     pushActivity(room, 'join', `${user.name} joined.`);
     return room;
@@ -80,7 +101,10 @@ export const roomStore = {
     }
 
     if (room.users.size === 0) {
-      rooms.delete(room.key);
+      // Don't destroy immediately — a transport blip (Cloudflare tunnel
+      // reconnect, brief Wi-Fi drop) can disconnect every client at once.
+      // Give them a window to rejoin before the room is gone for good.
+      scheduleDestroy(room.key);
       return null;
     }
     return room;

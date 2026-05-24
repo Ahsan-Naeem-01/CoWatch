@@ -17,6 +17,13 @@ export function getSocket() {
     reconnectionDelay: 800,
     reconnectionDelayMax: 4000,
     transports: ['websocket', 'polling'],
+    // ngrok free tier shows an interstitial warning page on browser requests
+    // to *.ngrok-free.app. The WebSocket upgrade is unaffected, but the HTTP
+    // polling fallback transport gets the warning HTML instead of the engine.io
+    // handshake. This header tells ngrok to skip the warning for those calls.
+    transportOptions: {
+      polling: { extraHeaders: { 'ngrok-skip-browser-warning': 'true' } },
+    },
   });
   return socket;
 }
