@@ -366,14 +366,14 @@ export default function Room() {
           {/* Loaded-files panel — visible to everyone on all layouts */}
           <LoadedFilesPanel users={room.users} selfId={selfId} />
 
-          {/* Mobile "Change reel" — the desktop foot bar is hidden below lg,
+          {/* Mobile "Change Video" — the desktop foot bar is hidden below lg,
               so surface the same action here when a file is loaded. */}
           {file && (
             <button
               onClick={clearFile}
               className="lg:hidden btn btn-ghost text-[13px] self-start"
             >
-              Change reel
+              Change Video
             </button>
           )}
 
@@ -400,8 +400,10 @@ export default function Room() {
             ))}
           </div>
 
-          {/* Mobile tab content */}
-          <div className="lg:hidden card min-h-[480px] flex flex-col overflow-hidden">
+          {/* Mobile tab content — a *definite* height (not min-height) so the
+              embedded panels' h-full/flex-1 chain resolves and the chat
+              composer pins to the bottom instead of leaving dead space. */}
+          <div className="lg:hidden card h-[65vh] min-h-[420px] flex flex-col overflow-hidden">
             {activeTab === 'chat' && (
               <ChatPanel
                 messages={chatMessages}
@@ -441,7 +443,7 @@ function LoadedFilesPanel({ users, selfId }) {
       </div>
       <ul className="flex flex-col gap-1.5">
         {users.map((u, i) => (
-          <li key={u.id} className="flex items-center gap-2.5 min-w-0">
+          <li key={u.id} className="flex items-start gap-2.5 min-w-0">
             <span
               className={`av av-${i % 6} flex-shrink-0`}
               style={{ width: 22, height: 22, fontSize: 10 }}
@@ -457,13 +459,13 @@ function LoadedFilesPanel({ users, selfId }) {
             <span className="text-fg-3 flex-shrink-0">·</span>
             {u.fileName ? (
               <span
-                className="text-[12px] text-fg-2 truncate min-w-0"
+                className="text-[12px] text-fg-2 min-w-0 break-words"
                 title={u.fileName}
               >
                 {u.fileName}
               </span>
             ) : (
-              <span className="text-[12px] text-fg-3 italic truncate min-w-0">
+              <span className="text-[12px] text-fg-3 italic min-w-0">
                 No file loaded
               </span>
             )}
