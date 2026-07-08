@@ -5,6 +5,7 @@ import {
   ReactionLauncher,
   ReactionOverlay,
 } from './EmojiReactions.jsx';
+import { SeekLauncher } from './SeekPanel.jsx';
 
 /**
  * Custom HTML5 video player with the Midnight theme. Native controls are
@@ -44,6 +45,7 @@ export default function VideoPlayer({
   const scrubRef = useRef(null);
   const clickTimerRef = useRef(null);
   const idleTimerRef = useRef(null);
+  const draggingRef = useRef(false);
 
   const showControls = !playing || controlsHover || mouseActive;
 
@@ -96,23 +98,61 @@ export default function VideoPlayer({
     }
   };
 
-  const onScrub = (e) => {
-    if (!canControl) return;
+  // Map a clientX to a time within the current scrubber bounds.
+  const timeFromClientX = (clientX) => {
+    const el = scrubRef.current;
+    if (!el || !duration) return null;
+    const rect = el.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return ratio * duration;
+  };
+
+  const seekToClientX = (clientX) => {
     const v = videoRef.current;
-    if (!v || !duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const pct = (e.clientX - rect.left) / rect.width;
-    v.currentTime = Math.max(0, Math.min(duration, pct * duration));
+    if (!v) return;
+    const t = timeFromClientX(clientX);
+    if (t === null) return;
+    v.currentTime = t;
+    // Reflect the new position immediately for a responsive drag; the native
+    // `timeupdate` will confirm it a moment later.
+    setTime(t);
+  };
+
+  // Begin a drag (also handles a plain click — a down + up with no move still
+  // seeks to that point). We attach the move/up listeners to `window` so the
+  // drag keeps tracking even when the cursor leaves the thin scrubber strip.
+  const onScrubPointerDown = (e) => {
+    if (!canControl || !duration) return;
+    e.preventDefault();
+    draggingRef.current = true;
+    seekToClientX(e.clientX);
+
+    const onMove = (ev) => {
+      seekToClientX(ev.clientX);
+      const t = timeFromClientX(ev.clientX);
+      if (t !== null) setScrubHover({ pct: (t / duration) * 100, time: t });
+    };
+    const onUp = () => {
+      draggingRef.current = false;
+      setScrubHover(null);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
   };
 
   const onScrubHover = (e) => {
-    if (!duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    setScrubHover({ pct: ratio * 100, time: ratio * duration });
+    if (!duration || draggingRef.current) return;
+    const t = timeFromClientX(e.clientX);
+    if (t === null) return;
+    setScrubHover({ pct: (t / duration) * 100, time: t });
   };
 
-  const onScrubLeave = () => setScrubHover(null);
+  const onScrubLeave = () => {
+    if (draggingRef.current) return;
+    setScrubHover(null);
+  };
 
   const onChangeRate = (r) => {
     const v = videoRef.current;
@@ -174,13 +214,32 @@ export default function VideoPlayer({
     v.currentTime = Math.max(0, Math.min(duration || v.duration, v.currentTime + delta));
   };
 
+  // Arrow-key seeking: ←/→ jump 5 seconds. Ignored while typing in a field
+  // (chat composer, subtitle input) so it never fights text entry.
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const el = document.activeElement;
+      const tag = el?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || el?.isContentEditable) return;
+      const v = videoRef.current;
+      if (!v || !canControl) return;
+      e.preventDefault();
+      const dur = duration || v.duration || 0;
+      const delta = e.key === 'ArrowLeft' ? -5 : 5;
+      v.currentTime = Math.max(0, Math.min(dur, v.currentTime + delta));
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [videoRef, canControl, duration]);
+
   const pct = duration ? (time / duration) * 100 : 0;
   const currentRate = videoRef.current?.playbackRate || 1;
 
   return (
     <div
       ref={containerRef}
-      className={`relative w-full h-full bg-black group ${
+      className={`relative w-full h-full bg-black group outline-none focus:outline-none ${
         playing && !showControls ? 'cursor-none' : ''
       }`}
       style={{ isolation: 'isolate' }}
@@ -202,7 +261,7 @@ export default function VideoPlayer({
           type="button"
           onClick={onSurfaceClick}
           aria-label={playing ? 'Pause' : 'Play'}
-          className="absolute inset-0 z-0 bg-transparent cursor-default"
+          className="absolute inset-0 z-0 bg-transparent cursor-default outline-none focus:outline-none focus-visible:outline-none"
         />
       )}
 
@@ -265,10 +324,10 @@ export default function VideoPlayer({
         {/* Scrubber */}
         <div
           ref={scrubRef}
-          onClick={onScrub}
+          onPointerDown={onScrubPointerDown}
           onMouseMove={onScrubHover}
           onMouseLeave={onScrubLeave}
-          className={`relative h-1.5 w-full bg-white/35 rounded-full group/scrub ${
+          className={`relative h-1.5 w-full bg-white/35 rounded-full group/scrub touch-none ${
             canControl ? 'cursor-pointer' : 'cursor-not-allowed'
           }`}
           aria-label="Scrub timeline"
@@ -411,6 +470,13 @@ export default function VideoPlayer({
           </div>
         </div>
       </div>
+
+      {/* Left-edge quick-seek launcher — mirror of the emoji launcher. */}
+      <SeekLauncher
+        onSeek={seekBy}
+        disabled={!canControl}
+        visible={showControls}
+      />
 
       {/* Right-edge emoji launcher — vertically centered pull-tab + panel.
           `visible` follows the same idle-hide rule as the control bar so

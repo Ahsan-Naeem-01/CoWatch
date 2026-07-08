@@ -17,6 +17,24 @@ import { Icon } from './Icon.jsx';
  */
 export const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '🔥', '👏', '🎉', '👀', '🙈', '💀', '🤬', '😪', '😭'];
 
+// Keyboard shortcut label for the emoji at position `i`: 1-9 for the first
+// nine, then a, b, c… for the rest.
+const shortcutLabel = (i) =>
+  i < 9 ? String(i + 1) : String.fromCharCode(97 + (i - 9));
+
+// Map a pressed key back to an emoji index, or -1 if it isn't a shortcut.
+const indexFromKey = (key) => {
+  if (/^[1-9]$/.test(key)) return Number(key) - 1;
+  if (/^[a-z]$/.test(key)) return 9 + (key.charCodeAt(0) - 97);
+  return -1;
+};
+
+const isTypingTarget = () => {
+  const el = document.activeElement;
+  const tag = el?.tagName;
+  return tag === 'INPUT' || tag === 'TEXTAREA' || el?.isContentEditable;
+};
+
 export function ReactionLauncher({ onPick, disabled, visible = true }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
@@ -43,6 +61,28 @@ export function ReactionLauncher({ onPick, disabled, visible = true }) {
     // re-clicking the toggle — matches Insta Live's tap-burst feel.
   };
 
+  // Global shortcuts: `s`/`S` toggles the panel; while it's open, the
+  // per-emoji keys (1-9, a, b, c…) fire that emoji. Ignored while typing.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (disabled || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isTypingTarget()) return;
+      if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        setOpen((v) => !v);
+        return;
+      }
+      if (!open) return;
+      const idx = indexFromKey(e.key.toLowerCase());
+      if (idx >= 0 && idx < REACTION_EMOJIS.length) {
+        e.preventDefault();
+        onPick?.(REACTION_EMOJIS[idx]);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, disabled, onPick]);
+
   // The whole assembly is hidden alongside the rest of the player chrome
   // when the user is idle, but stays put if the panel is currently open
   // (so it doesn't snap closed under the cursor).
@@ -63,16 +103,19 @@ export function ReactionLauncher({ onPick, disabled, visible = true }) {
           aria-label="Emoji reactions"
           className="mr-1 flex flex-col gap-1 p-1.5 rounded-2xl bg-black/85 border border-white/15 backdrop-blur-md shadow-pop reaction-panel-enter"
         >
-          {REACTION_EMOJIS.map((e) => (
+          {REACTION_EMOJIS.map((e, i) => (
             <button
               key={e}
               type="button"
               role="menuitem"
               onClick={() => handlePick(e)}
-              className="w-9 h-9 inline-flex items-center justify-center rounded-full hover:bg-white/15 active:scale-90 transition-transform text-[18px] leading-none"
-              aria-label={`React with ${e}`}
+              className="h-9 pl-1.5 pr-2 inline-flex items-center gap-1.5 rounded-full hover:bg-white/15 active:scale-90 transition-transform leading-none"
+              aria-label={`React with ${e} (key ${shortcutLabel(i)})`}
             >
-              <span className="emoji-noto">{e}</span>
+              <span className="mono text-[11px] text-white/50 w-3 text-center">
+                {shortcutLabel(i)}
+              </span>
+              <span className="emoji-noto text-[18px]">{e}</span>
             </button>
           ))}
         </div>
