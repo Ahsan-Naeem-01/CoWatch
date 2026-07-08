@@ -110,6 +110,15 @@ export const roomStore = {
     return room;
   },
 
+  setUserFile: (name, userId, fileName) => {
+    const room = rooms.get(normalizeName(name));
+    if (!room) return null;
+    const user = room.users.get(userId);
+    if (!user) return null;
+    user.fileName = fileName || null;
+    return room;
+  },
+
   updatePlayback: (name, patch) => {
     const room = rooms.get(normalizeName(name));
     if (!room) return null;

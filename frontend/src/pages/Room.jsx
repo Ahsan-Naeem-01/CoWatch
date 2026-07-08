@@ -31,6 +31,11 @@ export default function Room() {
 
   const videoRef = useRef(null);
   const passwordRef = useRef(location.state?.password || '');
+  // Mirror of `file` for use inside effects that shouldn't re-run on change.
+  const fileRef = useRef(null);
+  useEffect(() => {
+    fileRef.current = file;
+  }, [file]);
 
   const isHost = !!(room && selfId && room.hostId === selfId);
   const canControl = !!(room && (isHost || room.allowAllControl));
@@ -70,6 +75,11 @@ export default function Room() {
         }
         setRoom(resp.room);
         setSelfId(resp.selfId);
+        // Re-share the loaded file name — the server dropped it with the old
+        // socket id, but we still have the file open locally.
+        if (fileRef.current) {
+          socket.emit('set-file', { fileName: fileRef.current.name });
+        }
       }
     );
   }, [connected, socket, selfId, roomNameParam, userName, pushToast, navigate]);
@@ -179,9 +189,25 @@ export default function Room() {
       const url = URL.createObjectURL(chosen);
       setFile(chosen);
       setFileObjectUrl(url);
+      // Broadcast the file name (not the file) so everyone sees who loaded what.
+      socket.emit('set-file', { fileName: chosen.name });
+      // A freshly loaded video starts at 0. If we can control playback, reset
+      // the room's authoritative playhead to 0 so the new file doesn't jump to
+      // the previous video's timestamp when metadata loads (sync-state).
+      if (canControl) {
+        socket.emit('pause', { currentTime: 0 });
+        socket.emit('seek', { currentTime: 0 });
+      }
     },
-    [fileObjectUrl]
+    [fileObjectUrl, canControl, socket]
   );
+
+  const clearFile = useCallback(() => {
+    if (fileObjectUrl) URL.revokeObjectURL(fileObjectUrl);
+    setFile(null);
+    setFileObjectUrl(null);
+    socket.emit('set-file', { fileName: null });
+  }, [fileObjectUrl, socket]);
 
   const handleAutoplayBlocked = useCallback(
     () => setAutoplayBlocked(true),
@@ -337,17 +363,23 @@ export default function Room() {
             )}
           </div>
 
+          {/* Loaded-files panel — visible to everyone on all layouts */}
+          <LoadedFilesPanel users={room.users} selfId={selfId} />
+
+          {/* Mobile "Change reel" — the desktop foot bar is hidden below lg,
+              so surface the same action here when a file is loaded. */}
+          {file && (
+            <button
+              onClick={clearFile}
+              className="lg:hidden btn btn-ghost text-[13px] self-start"
+            >
+              Change reel
+            </button>
+          )}
+
           {/* Desktop foot bar */}
           <div className="hidden lg:block">
-            <RoomFootBar
-              file={file}
-              onClearFile={() => {
-                if (fileObjectUrl) URL.revokeObjectURL(fileObjectUrl);
-                setFile(null);
-                setFileObjectUrl(null);
-              }}
-              users={room.users}
-            />
+            <RoomFootBar file={file} onClearFile={clearFile} users={room.users} />
           </div>
 
           {/* Mobile tab switcher */}
@@ -396,6 +428,48 @@ export default function Room() {
           />
         </div>
       </section>
+    </div>
+  );
+}
+
+/* ── Panel showing which file each viewer has loaded ── */
+function LoadedFilesPanel({ users, selfId }) {
+  return (
+    <div className="card px-4 py-3">
+      <div className="mono text-[11px] uppercase tracking-cinema text-fg-3 mb-2">
+        Loaded files
+      </div>
+      <ul className="flex flex-col gap-1.5">
+        {users.map((u, i) => (
+          <li key={u.id} className="flex items-center gap-2.5 min-w-0">
+            <span
+              className={`av av-${i % 6} flex-shrink-0`}
+              style={{ width: 22, height: 22, fontSize: 10 }}
+            >
+              {(u.name || '?').slice(0, 1).toUpperCase()}
+            </span>
+            <span className="text-[12px] text-fg flex-shrink-0 truncate max-w-[140px]">
+              {u.name}
+              {u.id === selfId && (
+                <span className="text-fg-3"> (you)</span>
+              )}
+            </span>
+            <span className="text-fg-3 flex-shrink-0">·</span>
+            {u.fileName ? (
+              <span
+                className="text-[12px] text-fg-2 truncate min-w-0"
+                title={u.fileName}
+              >
+                {u.fileName}
+              </span>
+            ) : (
+              <span className="text-[12px] text-fg-3 italic truncate min-w-0">
+                No file loaded
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

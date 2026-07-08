@@ -25,6 +25,11 @@ export function sanitizePassword(raw) {
   return stripControl(raw || '').slice(0, 128);
 }
 
+export function sanitizeFileName(raw) {
+  const name = stripControl(raw || '').trim().replace(/\s+/g, ' ').slice(0, 120);
+  return name || null;
+}
+
 export function sanitizeChatMessage(raw) {
   return stripControl(raw || '').trim().slice(0, 500);
 }

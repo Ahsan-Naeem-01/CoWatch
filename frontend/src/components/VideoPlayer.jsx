@@ -193,7 +193,7 @@ export default function VideoPlayer({
         className="block w-full h-full object-contain bg-black"
         playsInline
         controls={false}
-        preload="metadata"
+        preload="auto"
       />
 
       {/* Click-to-toggle / double-click-fullscreen overlay */}
@@ -355,12 +355,6 @@ export default function VideoPlayer({
           </div>
 
           <div className="flex items-center gap-2">
-            {file && (
-              <span className="hidden md:inline mono text-[10px] uppercase tracking-cinema text-white/55 mr-2 truncate max-w-[200px]">
-                {file.name}
-              </span>
-            )}
-
             <div className="relative">
               <CtrlBtn
                 onClick={() => setRateOpen((v) => !v)}

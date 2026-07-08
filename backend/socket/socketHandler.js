@@ -27,7 +27,7 @@ const REACTION_MAX_PER_WINDOW = 5;
 import { RoomController, projectRoom } from '../controllers/roomController.js';
 import { roomStore } from '../rooms/roomStore.js';
 import { attachRateLimiter } from '../middleware/rateLimit.js';
-import { sanitizeChatMessage, sanitizeUserName } from '../utils/sanitize.js';
+import { sanitizeChatMessage, sanitizeUserName, sanitizeFileName } from '../utils/sanitize.js';
 import { validTimestamp, validPlaybackRate, validBoolean } from '../utils/validators.js';
 
 export function registerSocketHandlers(io) {
@@ -269,6 +269,23 @@ export function registerSocketHandlers(io) {
         socket.data.userName = clean;
         roomStore.pushActivity(room, 'system', `${old} is now ${clean}.`);
         io.to(room.key).emit('room-state', projectRoom(room));
+      })
+    );
+
+    // ---------- Loaded file ----------
+    //
+    // Each viewer loads their own local file; the file name (never the file
+    // itself) is shared so everyone can see who has loaded what.
+    socket.on(
+      'set-file',
+      guard(({ fileName } = {}) => {
+        const clean = sanitizeFileName(fileName);
+        const room = roomStore.setUserFile(socket.data.roomName, socket.id, clean);
+        if (!room) return;
+        const label = clean ? `loaded "${clean}".` : 'cleared their file.';
+        roomStore.pushActivity(room, 'system', `${socket.data.userName} ${label}`);
+        io.to(room.key).emit('room-state', projectRoom(room));
+        io.to(room.key).emit('activity', tailActivity(room));
       })
     );
 
