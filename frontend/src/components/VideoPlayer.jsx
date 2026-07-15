@@ -68,7 +68,20 @@ export default function VideoPlayer({
     const onTime = () => setTime(v.currentTime);
     const onMeta = () => {
       setDuration(v.duration || 0);
+      // Reflect the freshly loaded video's real position (0 for a new file).
+      // A paused new clip fires no `timeupdate`, so without this the scrubber
+      // would keep the previous video's timestamp.
+      setTime(v.currentTime);
       onMetadataLoaded?.();
+    };
+    // The sync layer may hard-set currentTime after load; mirror that here so
+    // the scrubber stays truthful even when playback (and thus `timeupdate`)
+    // hasn't started yet.
+    const onSeeked = () => setTime(v.currentTime);
+    // Fired when the media resource is emptied (e.g. a new src begins loading).
+    const onEmptied = () => {
+      setTime(0);
+      setDuration(0);
     };
     const onVol = () => {
       setMuted(v.muted);
@@ -78,15 +91,29 @@ export default function VideoPlayer({
     v.addEventListener('pause', onPause);
     v.addEventListener('timeupdate', onTime);
     v.addEventListener('loadedmetadata', onMeta);
+    v.addEventListener('seeked', onSeeked);
+    v.addEventListener('emptied', onEmptied);
     v.addEventListener('volumechange', onVol);
     return () => {
       v.removeEventListener('play', onPlay);
       v.removeEventListener('pause', onPause);
       v.removeEventListener('timeupdate', onTime);
       v.removeEventListener('loadedmetadata', onMeta);
+      v.removeEventListener('seeked', onSeeked);
+      v.removeEventListener('emptied', onEmptied);
       v.removeEventListener('volumechange', onVol);
     };
   }, [videoRef, onMetadataLoaded]);
+
+  // When the source changes we're loading a fresh video that starts at 0s.
+  // The `time`/`duration` state carry over from the previous clip until the new
+  // one fires its first `timeupdate`/`loadedmetadata`, which would otherwise
+  // leave the scrubber frozen at the old position. Reset them immediately.
+  useEffect(() => {
+    setTime(0);
+    setDuration(0);
+    setScrubHover(null);
+  }, [src]);
 
   const togglePlay = () => {
     const v = videoRef.current;

@@ -20,7 +20,9 @@
 
 // Whitelist of reaction emojis the server will rebroadcast. Anything else is
 // dropped — keeps the overlay legible and prevents arbitrary unicode spam.
-const ALLOWED_REACTIONS = new Set(['❤️', '😂', '😮', '😢', '🔥', '👏', '👍', '🎉']);
+// Must stay in sync with REACTION_EMOJIS in
+// frontend/src/components/EmojiReactions.jsx.
+const ALLOWED_REACTIONS = new Set(['❤️', '😂', '😮', '😢', '🔥', '👏', '🎉', '👀', '🙈', '💀', '🤬', '😪', '😭']);
 const REACTION_WINDOW_MS = 1_000;
 const REACTION_MAX_PER_WINDOW = 5;
 
